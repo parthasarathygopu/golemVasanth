@@ -65,4 +65,13 @@ export const ENDPOINT = {
     deletePlugin: (name: string, version: string) => {
         return `/v1/plugins/${name}/${version}`;
     },
+    getDeploymentApi: (versionId: string) => {
+        return `/v1/api/deployments?api-definition-id=${versionId}`;
+    },
+    deleteDeployment: (deploymentId: string) => {
+        return `/v1/api/deployments/${deploymentId}`;
+    },
+    createDeployment: () => {
+        return `/v1/api/deployments/deploy`;
+    },
 };

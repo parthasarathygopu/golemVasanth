@@ -7,6 +7,7 @@ import {Api} from "@/types/api.ts";
 import {API} from "@/service";
 import ErrorBoundary from "@/components/errorBoundary";
 import {Badge} from "@/components/ui/badge.tsx";
+import { removeDuplicateApis } from "@/lib/utils";
 
 export function APISection() {
     const navigate = useNavigate();
@@ -14,7 +15,8 @@ export function APISection() {
 
     useEffect(() => {
         API.getApiList().then((response) => {
-            setApis(response.filter((api) => api.draft));
+            const newData = removeDuplicateApis(response);
+            setApis(newData);
         });
     }, []);
 
