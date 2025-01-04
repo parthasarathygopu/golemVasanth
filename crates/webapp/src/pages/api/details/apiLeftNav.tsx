@@ -4,13 +4,37 @@ import {Button} from "@/components/ui/button";
 import {cn} from "@/lib/utils";
 import ErrorBoundary from "@/components/errorBoundary";
 import {Badge} from "@/components/ui/badge.tsx";
+import {useEffect, useState} from "react";
+import {API} from "@/service";
+import {Api} from "@/types/api.ts";
 
 const ApiLeftNav = () => {
     const navigate = useNavigate();
     const {apiName} = useParams();
     const location = useLocation();
+    const [apiDetails, setApiDetails] = useState({} as Api);
 
     const isActive = (path: string) => location.pathname.endsWith(path);
+    const queryString = location.search;
+
+    // Parse the query string using URLSearchParams
+    const queryParams = new URLSearchParams(queryString);
+
+    useEffect(() => {
+        API.getApi(apiName!).then(async (response) => {
+            if (queryParams.get("version")) {
+                const version = queryParams.get("version");
+                const selectedApi = response.find(
+                    (api) => api.version === version
+                );
+                if (selectedApi) {
+                    setApiDetails(selectedApi);
+                }
+            } else if (response.length > 0) {
+                setApiDetails(response[response.length - 1]);
+            }
+        });
+    }, []);
 
     return (
         <ErrorBoundary>
@@ -80,20 +104,19 @@ const ApiLeftNav = () => {
                         Routes
                     </h2>
                     <div className="grid text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 gap-2">
-                        <div className="flex items-center gap-2">
-                            <Badge variant="secondary"
-                                   className="bg-emerald-900 text-emerald-200 hover:bg-emerald-900">
-                                GET
-                            </Badge>
-                            <span className="text-sm font-mono">{'/v4/{user-id}/get-cart-contents'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Badge variant="secondary"
-                                   className="bg-emerald-900 text-emerald-200 hover:bg-emerald-900">
-                                GET
-                            </Badge>
-                            <span className="text-sm font-mono">{'/v4/{user-id}/get-cart-contents'}</span>
-                        </div>
+                        {apiDetails?.routes?.map((route) => (
+                            <div
+                                key={`${route.method}-${route.path}`}
+                                className="flex items-center gap-2 cursor-pointer"
+                                onClick={() => navigate(`/apis/${apiName}/route/${route.id}`)}
+                            >
+                                <Badge variant="secondary"
+                                       className="bg-emerald-900 text-emerald-200 hover:bg-emerald-900">
+                                    {route.method}
+                                </Badge>
+                                <span className="text-sm font-mono">{route.path}</span>
+                            </div>
+                        ))}
                     </div>
                     <Button
                         variant="outline"

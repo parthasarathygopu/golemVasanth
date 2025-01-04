@@ -12,12 +12,12 @@ import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from "@/components/ui/dialog";
 
 const APIDetails = () => {
@@ -104,7 +104,7 @@ const APIDetails = () => {
                         <section className="grid gap-16">
                             <Card>
                                 <CardHeader>
-                                    <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center justify-between">
                                         <CardTitle>Routes</CardTitle>
                                         <Button
                                             variant="outline"
@@ -126,7 +126,7 @@ const APIDetails = () => {
                                             {activeApiDetails?.routes?.map((route, index) => (
                                                 <div
                                                     key={`${route.method}-${route.path}`}
-                                                    className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors"
+                                                    className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors cursor-pointer"
                                                     onClick={() => navigate(`/apis/${apiName}/route/${route.id}`)}
                                                 >
                                                     <div className="space-y-2">
