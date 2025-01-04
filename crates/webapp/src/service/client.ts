@@ -113,6 +113,21 @@ export class Service {
         return r
     }
 
+    public getDeploymentApi = async (versionId: string) => {
+        const r = await this.callApi(ENDPOINT.getDeploymentApi(versionId));
+        return r
+    }
+
+    public deleteDeployment = async (deploymentId: string) => {
+        const r = await this.callApi(ENDPOINT.deleteDeployment(deploymentId), "DELETE");
+        return r
+    }
+
+    public createDeployment = async (payload: any) => {
+        const r = await this.callApi(ENDPOINT.createDeployment(), 'POST', JSON.stringify(payload));
+        return r
+    }
+
     public getComponentByIdAsKey = async (): Promise<Record<string, Component>> => {
         const result: Record<string, Component> = {};
         const components = await this.getComponents();
@@ -173,12 +188,14 @@ export class Service {
             } else {
                 responseData = await response.text();
             }
+            console.log(responseData, "responseData");
             if (response.ok) {
                 return responseData;
             } else {
                 throw responseData;
             }
         } catch (response : any) {
+            console.log(response, "response");
             if (method !== "GET") {
                 let descriptions = response;
                 if(response?.error) {

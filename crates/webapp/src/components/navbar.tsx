@@ -36,6 +36,7 @@ const Navbar = () => {
             <NavLink to="/components">Components</NavLink>
             <NavLink to="/apis">APIs</NavLink>
             <NavLink to="/plugins">Plugins</NavLink>
+            <NavLink to="/deployments">Deployments</NavLink>
           </div>
         </div>
         <div className="flex items-center space-x-8">

@@ -1,3 +1,4 @@
+import { Api } from "@/types/api";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -52,6 +53,24 @@ export function formatTimestampInDateTimeFormat(timestamp: string) {
   // Combine into the desired format
   return `${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
 }
+
+export const removeDuplicateApis = (data : Api[]) => {
+  const uniqueEntries = {} as Record<string, Api>;
+
+  data.forEach((item) => {
+    if (
+      !uniqueEntries[item.id] ||
+      (item.createdAt &&
+        new Date(item.createdAt) >
+          new Date(uniqueEntries[item.id].createdAt || 0))
+    ) {
+      uniqueEntries[item.id] = item;
+    }
+  });
+
+  return Object.values(uniqueEntries);
+};
+
 
 
 

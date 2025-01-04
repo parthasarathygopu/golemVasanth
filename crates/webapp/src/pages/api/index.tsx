@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ErrorBoundary from "@/components/errorBoundary";
+import { removeDuplicateApis } from "@/lib/utils";
 
 export const APIs = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export const APIs = () => {
 
   useEffect(() => {
     API.getApiList().then((response) => {
-      const newData = response.filter((api) => api.draft);
+      const newData = removeDuplicateApis(response);
       setApis(newData);
       setSearchedApi(newData);
     });

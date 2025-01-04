@@ -6,7 +6,7 @@ import CreateAPI from "@/pages/api/create";
 import APIDetails from "@/pages/api/details";
 import APISettings from "@/pages/api/details/settings";
 import CreateRoute from "@/pages/api/details/createRoute.tsx";
-import Deployments from "@/pages/Deployments";
+import Deployments from "@/pages/deployment";
 import { ComponentDetails } from "@/pages/components/details";
 import { PluginList } from "@/pages/plugin";
 import ComponentSettings from "@/pages/components/details/settings";
@@ -27,6 +27,7 @@ import WorkerInvoke from "@/pages/workers/details/invoke";
 import WorkerLive from "@/pages/workers/details/live";
 import CreatePlugin from "@/pages/plugin/create.tsx";
 import { PluginView } from "@/pages/plugin/view.tsx";
+import CreateDeployment from "@/pages/deployment/create";
 
 function App() {
   return (
@@ -102,6 +103,7 @@ function App() {
             <Route path="/plugins/create" element={<CreatePlugin />} />
             <Route path="/apis/:apiName/routes/new" element={<CreateRoute />} />
             <Route path="/deployments" element={<Deployments />} />
+            <Route path="/deployments/create" element={<CreateDeployment />} />
             <Route path="/plugins" element={<PluginList />} />
             <Route path="/plugins/create" element={<CreatePlugin />} />
             <Route path="/plugins/:pluginId" element={<PluginView />} />

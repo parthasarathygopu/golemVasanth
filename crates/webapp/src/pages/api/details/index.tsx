@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-// import {Globe, Link2 } from "lucide-react"
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Globe } from "lucide-react";
 
 import {
   Select,
@@ -25,25 +24,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Deployment } from "@/types/deployments.ts";
 
 const APIDetails = () => {
   const { apiName } = useParams();
   const navigate = useNavigate();
   const [apiDetails, setApiDetails] = useState([] as Api[]);
   const [activeApiDetails, setActiveApiDetails] = useState({} as Api);
-  // const [deployments] = useState([
-  //   {
-  //     domain: "api.golem.cloud",
-  //     id: "abcd",
-  //     status: "Active",
-  //   },
-  // ]);
+
+  const [deployments, setDeployments] = useState([] as Deployment[]);
 
   useEffect(() => {
     if (apiName) {
       API.getApi(apiName).then((response) => {
         setApiDetails(response);
         setActiveApiDetails(response[response.length - 1]);
+      });
+      API.getDeploymentApi(apiName).then((response) => {
+        setDeployments(response);
       });
     }
   }, [apiName]);
@@ -193,36 +191,45 @@ const APIDetails = () => {
                   )}
                 </CardContent>
               </Card>
-              {/* <Card>
+              <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Active Deployments</CardTitle>
-                  <Button variant="ghost" className="text-primary">
-                    View All
-                  </Button>
+                  {deployments.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      className="text-primary"
+                      onClick={() => navigate(`/deployments`)}
+                    >
+                      View All
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  {deployments.map((deployment) => (
-                    <div
-                      key={deployment.id}
-                      className="flex items-center justify-between rounded-lg border p-4"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" />
-                          <span className="font-medium">
-                            {deployment.domain}
-                          </span>
+                  <div className="grid gap-4">
+                    {deployments.length > 0 ? (
+                      deployments.map((deployment) => (
+                        <div
+                          key={deployment.createdAt}
+                          className="flex items-center justify-between rounded-lg border p-4"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Globe className="h-4 w-4" />
+                              <span className="font-medium">
+                                {deployment.site.host}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Link2 className="h-4 w-4" />
-                          <span>{deployment.id}</span>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center">
+                        No routes defined for this API version
                       </div>
-                      <Badge variant="outline">{deployment.status}</Badge>
-                    </div>
-                  ))}
+                    )}
+                  </div>
                 </CardContent>
-              </Card> */}
+              </Card>
             </section>
           </main>
         </div>
