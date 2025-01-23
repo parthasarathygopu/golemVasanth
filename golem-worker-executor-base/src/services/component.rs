@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -35,7 +36,7 @@ use golem_api_grpc::proto::golem::component::v1::{
 use golem_common::cache::{BackgroundEvictionMode, Cache, FullCacheEvictionMode, SimpleCache};
 use golem_common::client::{GrpcClient, GrpcClientConfig};
 use golem_common::metrics::external_calls::record_external_call_response_size_bytes;
-use golem_common::model::component_metadata::LinearMemory;
+use golem_common::model::component_metadata::{DynamicLinkedInstance, LinearMemory};
 use golem_common::model::plugin::PluginInstallation;
 use golem_common::model::RetryConfig;
 use golem_common::model::{
@@ -65,6 +66,9 @@ pub struct ComponentMetadata {
     pub component_type: ComponentType,
     pub files: Vec<InitialComponentFile>,
     pub plugin_installations: Vec<PluginInstallation>,
+
+    #[serde(default)]
+    pub dynamic_linking: HashMap<String, DynamicLinkedInstance>,
 }
 
 /// Service for downloading a specific Golem component from the Golem Component API
@@ -480,34 +484,55 @@ async fn get_metadata_via_grpc(
                         .unwrap_or_default(),
                     exports: component
                         .metadata
+                        .as_ref()
                         .map(|metadata| {
-                            let export = metadata.exports;
-                            let vec: Vec<Result<AnalysedExport, String>> =
-                                export.into_iter().map(AnalysedExport::try_from).collect();
+                            let export = &metadata.exports;
+                            let vec: Vec<Result<AnalysedExport, String>> = export
+                                .iter()
+                                .cloned()
+                                .map(AnalysedExport::try_from)
+                                .collect();
                             vec.into_iter().collect()
                         })
                         .unwrap_or_else(|| Ok(Vec::new()))
-                        .map_err(|_| {
-                            GrpcError::Unexpected("Failed to get the exports".to_string())
+                        .map_err(|err| {
+                            GrpcError::Unexpected(format!("Failed to get the exports: {err}"))
                         })?,
                     files: component
                         .files
                         .into_iter()
                         .map(|file| file.try_into())
                         .collect::<Result<Vec<_>, _>>()
-                        .map_err(|_| {
-                            GrpcError::Unexpected("Failed to get the files".to_string())
+                        .map_err(|err| {
+                            GrpcError::Unexpected(format!("Failed to get the files: {err}"))
                         })?,
                     plugin_installations: component
                         .installed_plugins
                         .into_iter()
                         .map(|plugin| plugin.try_into())
                         .collect::<Result<Vec<_>, _>>()
-                        .map_err(|_| {
-                            GrpcError::Unexpected(
-                                "Failed to get the plugin installations".to_string(),
-                            )
+                        .map_err(|err| {
+                            GrpcError::Unexpected(format!(
+                                "Failed to get the plugin installations: {err}"
+                            ))
                         })?,
+                    dynamic_linking: HashMap::from_iter(
+                        component
+                            .metadata
+                            .map(|metadata| {
+                                metadata
+                                    .dynamic_linking
+                                    .into_iter()
+                                    .map(|(k, v)| v.try_into().map(|v| (k.clone(), v)))
+                                    .collect::<Result<Vec<_>, String>>()
+                            })
+                            .unwrap_or_else(|| Ok(Vec::new()))
+                            .map_err(|err| {
+                                GrpcError::Unexpected(format!(
+                                    "Failed to get the dynamic linking information: {err}"
+                                ))
+                            })?,
+                    ),
                 };
 
                 record_external_call_response_size_bytes("components", "get_metadata", len);

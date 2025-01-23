@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -228,7 +228,7 @@ pub mod wasm {
         .unwrap();
     }
 
-    pub fn record_host_function_call(iface: &'static str, name: &'static str) {
+    pub fn record_host_function_call(iface: &str, name: &str) {
         debug!("golem {iface}::{name} called");
         HOST_FUNCTION_CALL_TOTAL
             .with_label_values(&[iface, name])

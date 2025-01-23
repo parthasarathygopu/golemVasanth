@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -339,8 +339,6 @@ mod tests {
 
     use chrono::DateTime;
 
-    use uuid::Uuid;
-
     use crate::error::GolemError;
     use crate::services::oplog::{Oplog, OplogService, PrimaryOplogService};
     use crate::services::promise::PromiseServiceMock;
@@ -356,6 +354,7 @@ mod tests {
         AccountId, ComponentId, OwnedWorkerId, PromiseId, ScheduledAction, ShardId, WorkerId,
     };
     use golem_service_base::storage::blob::memory::InMemoryBlobStorage;
+    use uuid::Uuid;
 
     struct SchedulerWorkerAccessMock;
 

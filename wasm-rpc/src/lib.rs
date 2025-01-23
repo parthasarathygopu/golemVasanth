@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,7 +77,8 @@ pub use extractor::{WitNodePointer, WitValueExtractor};
 #[cfg(not(feature = "host-bindings"))]
 #[cfg(feature = "stub")]
 pub use bindings::golem::rpc::types::{
-    FutureInvokeResult, NodeIndex, RpcError, Uri, WasmRpc, WitNode, WitValue,
+    FutureInvokeResult, NodeIndex, ResourceMode, RpcError, Uri, WasmRpc, WitNode, WitType,
+    WitTypeNode, WitValue,
 };
 #[cfg(not(feature = "host-bindings"))]
 #[cfg(feature = "stub")]
@@ -92,7 +93,7 @@ mod generated {
 
     bindgen!({
         path: "wit",
-        world: "wit-value-world",
+        world: "wit-value",
         tracing: false,
         async: true,
         trappable_imports: true,
@@ -110,7 +111,8 @@ pub use generated::golem;
 
 #[cfg(feature = "host-bindings")]
 pub use generated::golem::rpc::types::{
-    Host, HostWasmRpc, NodeIndex, RpcError, Uri, WitNode, WitValue,
+    Host, HostWasmRpc, NodeIndex, ResourceMode, RpcError, Uri, WitNode, WitType, WitTypeNode,
+    WitValue,
 };
 
 #[cfg(feature = "host-bindings")]

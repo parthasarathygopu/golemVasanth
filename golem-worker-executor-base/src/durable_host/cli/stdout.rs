@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
 
 use wasmtime::component::Resource;
 
-use crate::durable_host::DurableWorkerCtx;
-use crate::metrics::wasm::record_host_function_call;
+use crate::durable_host::{DurabilityHost, DurableWorkerCtx};
 use crate::workerctx::WorkerCtx;
 use wasmtime_wasi::bindings::cli::stdout::{Host, OutputStream};
 
 impl<Ctx: WorkerCtx> Host for DurableWorkerCtx<Ctx> {
     fn get_stdout(&mut self) -> anyhow::Result<Resource<OutputStream>> {
-        record_host_function_call("cli::stdout", "get_stdout");
+        self.observe_function_call("cli::stdout", "get_stdout");
         self.as_wasi_view().get_stdout()
     }
 }

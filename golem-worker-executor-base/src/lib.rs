@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ pub mod model;
 pub mod preview2;
 pub mod services;
 pub mod storage;
+pub mod virtual_export_compat;
 pub mod wasi_host;
 pub mod worker;
 pub mod workerctx;

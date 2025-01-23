@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,11 +21,12 @@ use bytes::Bytes;
 use golem_api_grpc::proto::golem::worker::update_record::Update;
 use golem_api_grpc::proto::golem::worker::v1::worker_error::Error;
 use golem_api_grpc::proto::golem::worker::v1::{
-    get_oplog_response, get_worker_metadata_response, get_workers_metadata_response,
-    interrupt_worker_response, invoke_and_await_json_response, invoke_and_await_response,
-    invoke_response, launch_new_worker_response, list_directory_response, resume_worker_response,
-    search_oplog_response, update_worker_response, worker_execution_error, ConnectWorkerRequest,
-    DeleteWorkerRequest, GetFileContentsRequest, GetOplogRequest, GetWorkerMetadataRequest,
+    fork_worker_response, get_oplog_response, get_worker_metadata_response,
+    get_workers_metadata_response, interrupt_worker_response, invoke_and_await_json_response,
+    invoke_and_await_response, invoke_response, launch_new_worker_response,
+    list_directory_response, resume_worker_response, search_oplog_response, update_worker_response,
+    worker_execution_error, ConnectWorkerRequest, DeleteWorkerRequest, ForkWorkerRequest,
+    ForkWorkerResponse, GetFileContentsRequest, GetOplogRequest, GetWorkerMetadataRequest,
     GetWorkersMetadataRequest, GetWorkersMetadataSuccessResponse, InterruptWorkerRequest,
     InterruptWorkerResponse, InvokeAndAwaitJsonRequest, InvokeAndAwaitRequest, InvokeRequest,
     LaunchNewWorkerRequest, ListDirectoryRequest, ResumeWorkerRequest, SearchOplogRequest,
@@ -34,6 +35,7 @@ use golem_api_grpc::proto::golem::worker::v1::{
 use golem_api_grpc::proto::golem::worker::{
     log_event, InvokeParameters, LogEvent, StdErrLog, StdOutLog, UpdateMode,
 };
+use golem_common::model::component_metadata::DynamicLinkedInstance;
 use golem_common::model::oplog::{
     OplogIndex, TimestampedUpdateDescription, UpdateDescription, WorkerResourceId,
 };
@@ -79,6 +81,17 @@ pub trait TestDsl {
         component_type: ComponentType,
         files: &[InitialComponentFile],
     ) -> ComponentId;
+    async fn store_component_with_dynamic_linking(
+        &self,
+        name: &str,
+        dynamic_linking: &[(&'static str, DynamicLinkedInstance)],
+    ) -> ComponentId;
+    async fn store_unique_component_with_dynamic_linking(
+        &self,
+        name: &str,
+        dynamic_linking: &[(&'static str, DynamicLinkedInstance)],
+    ) -> ComponentId;
+
     async fn update_component(&self, component_id: &ComponentId, name: &str) -> ComponentVersion;
 
     async fn update_component_with_files(
@@ -203,7 +216,7 @@ pub trait TestDsl {
         worker_id: &WorkerId,
     ) -> UnboundedReceiver<Option<LogEvent>>;
     async fn log_output(&self, worker_id: &WorkerId);
-    async fn resume(&self, worker_id: &WorkerId) -> crate::Result<()>;
+    async fn resume(&self, worker_id: &WorkerId, force: bool) -> crate::Result<()>;
     async fn interrupt(&self, worker_id: &WorkerId) -> crate::Result<()>;
     async fn simulated_crash(&self, worker_id: &WorkerId) -> crate::Result<()>;
     async fn auto_update_worker(
@@ -251,6 +264,13 @@ pub trait TestDsl {
         priority: i32,
         parameters: HashMap<String, String>,
     ) -> crate::Result<PluginInstallationId>;
+
+    async fn fork_worker(
+        &self,
+        source_worker_id: &WorkerId,
+        target_worker_id: &WorkerId,
+        oplog_index: OplogIndex,
+    ) -> crate::Result<()>;
 }
 
 #[async_trait]
@@ -306,7 +326,13 @@ impl<T: TestDependencies + Send + Sync> TestDsl for T {
         let uuid = Uuid::new_v4();
         let unique_name = format!("{name}-{uuid}");
         self.component_service()
-            .add_component_with_files(&source_path, &unique_name, component_type, files)
+            .add_component_with_files(
+                &source_path,
+                &unique_name,
+                component_type,
+                files,
+                &HashMap::new(),
+            )
             .await
             .expect("Failed to store component")
     }
@@ -319,9 +345,57 @@ impl<T: TestDependencies + Send + Sync> TestDsl for T {
     ) -> ComponentId {
         let source_path = self.component_directory().join(format!("{name}.wasm"));
         self.component_service()
-            .add_component_with_files(&source_path, name, component_type, files)
+            .add_component_with_files(&source_path, name, component_type, files, &HashMap::new())
             .await
             .expect("Failed to store component with id {component_id}")
+    }
+
+    async fn store_component_with_dynamic_linking(
+        &self,
+        name: &str,
+        dynamic_linking: &[(&'static str, DynamicLinkedInstance)],
+    ) -> ComponentId {
+        let source_path = self.component_directory().join(format!("{name}.wasm"));
+        let dynamic_linking = HashMap::from_iter(
+            dynamic_linking
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone())),
+        );
+        self.component_service()
+            .add_component_with_files(
+                &source_path,
+                name,
+                ComponentType::Durable,
+                &[],
+                &dynamic_linking,
+            )
+            .await
+            .expect("Failed to store component with id {component_id}")
+    }
+
+    async fn store_unique_component_with_dynamic_linking(
+        &self,
+        name: &str,
+        dynamic_linking: &[(&'static str, DynamicLinkedInstance)],
+    ) -> ComponentId {
+        let source_path = self.component_directory().join(format!("{name}.wasm"));
+        let uuid = Uuid::new_v4();
+        let unique_name = format!("{name}-{uuid}");
+        let dynamic_linking = HashMap::from_iter(
+            dynamic_linking
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone())),
+        );
+        self.component_service()
+            .add_component_with_files(
+                &source_path,
+                &unique_name,
+                ComponentType::Durable,
+                &[],
+                &dynamic_linking,
+            )
+            .await
+            .expect("Failed to store component")
     }
 
     async fn add_initial_component_file(
@@ -355,7 +429,13 @@ impl<T: TestDependencies + Send + Sync> TestDsl for T {
     ) -> ComponentVersion {
         let source_path = self.component_directory().join(format!("{name}.wasm"));
         self.component_service()
-            .update_component_with_files(component_id, &source_path, ComponentType::Durable, files)
+            .update_component_with_files(
+                component_id,
+                &source_path,
+                ComponentType::Durable,
+                files,
+                &HashMap::new(),
+            )
             .await
     }
 
@@ -791,11 +871,12 @@ impl<T: TestDependencies + Send + Sync> TestDsl for T {
         });
     }
 
-    async fn resume(&self, worker_id: &WorkerId) -> crate::Result<()> {
+    async fn resume(&self, worker_id: &WorkerId, force: bool) -> crate::Result<()> {
         let response = self
             .worker_service()
             .resume_worker(ResumeWorkerRequest {
                 worker_id: Some(worker_id.clone().into()),
+                force: Some(force),
             })
             .await?;
 
@@ -1107,6 +1188,32 @@ impl<T: TestDependencies + Send + Sync> TestDsl for T {
                 .collect::<Vec<_>>()
                 .join(", ")
         ))
+    }
+
+    async fn fork_worker(
+        &self,
+        source_worker_id: &WorkerId,
+        target_worker_id: &WorkerId,
+        oplog_index: OplogIndex,
+    ) -> crate::Result<()> {
+        let response = self
+            .worker_service()
+            .fork_worker(ForkWorkerRequest {
+                source_worker_id: Some(source_worker_id.clone().into()),
+                target_worker_id: Some(target_worker_id.clone().into()),
+                oplog_index_cutoff: oplog_index.into(),
+            })
+            .await?;
+
+        match response {
+            ForkWorkerResponse {
+                result: Some(fork_worker_response::Result::Success(_)),
+            } => Ok(()),
+            ForkWorkerResponse {
+                result: Some(fork_worker_response::Result::Error(error)),
+            } => Err(anyhow!("Failed to fork worker: {error:?}")),
+            _ => Err(anyhow!("Failed to fork worker: unknown error")),
+        }
     }
 }
 
@@ -1436,6 +1543,17 @@ pub trait TestDslUnsafe {
         component_type: ComponentType,
         files: &[InitialComponentFile],
     ) -> ComponentId;
+    async fn store_component_with_dynamic_linking(
+        &self,
+        name: &str,
+        dynamic_linking: &[(&'static str, DynamicLinkedInstance)],
+    ) -> ComponentId;
+    async fn store_unique_component_with_dynamic_linking(
+        &self,
+        name: &str,
+        dynamic_linking: &[(&'static str, DynamicLinkedInstance)],
+    ) -> ComponentId;
+
     async fn update_component(&self, component_id: &ComponentId, name: &str) -> ComponentVersion;
     async fn update_component_with_files(
         &self,
@@ -1543,7 +1661,7 @@ pub trait TestDslUnsafe {
         worker_id: &WorkerId,
     ) -> UnboundedReceiver<Option<LogEvent>>;
     async fn log_output(&self, worker_id: &WorkerId);
-    async fn resume(&self, worker_id: &WorkerId);
+    async fn resume(&self, worker_id: &WorkerId, force: bool);
     async fn interrupt(&self, worker_id: &WorkerId);
     async fn simulated_crash(&self, worker_id: &WorkerId);
     async fn auto_update_worker(&self, worker_id: &WorkerId, target_version: ComponentVersion);
@@ -1578,6 +1696,13 @@ pub trait TestDslUnsafe {
         priority: i32,
         parameters: HashMap<String, String>,
     ) -> PluginInstallationId;
+
+    async fn fork_worker(
+        &self,
+        source_worker_id: &WorkerId,
+        target_worker_id: &WorkerId,
+        oplog_index: OplogIndex,
+    );
 }
 
 #[async_trait]
@@ -1618,6 +1743,23 @@ impl<T: TestDsl + Sync> TestDslUnsafe for T {
         files: &[InitialComponentFile],
     ) -> ComponentId {
         <T as TestDsl>::store_component_with_files(self, name, component_type, files).await
+    }
+
+    async fn store_component_with_dynamic_linking(
+        &self,
+        name: &str,
+        dynamic_linking: &[(&'static str, DynamicLinkedInstance)],
+    ) -> ComponentId {
+        <T as TestDsl>::store_component_with_dynamic_linking(self, name, dynamic_linking).await
+    }
+
+    async fn store_unique_component_with_dynamic_linking(
+        &self,
+        name: &str,
+        dynamic_linking: &[(&'static str, DynamicLinkedInstance)],
+    ) -> ComponentId {
+        <T as TestDsl>::store_unique_component_with_dynamic_linking(self, name, dynamic_linking)
+            .await
     }
 
     async fn update_component(&self, component_id: &ComponentId, name: &str) -> ComponentVersion {
@@ -1794,8 +1936,8 @@ impl<T: TestDsl + Sync> TestDslUnsafe for T {
         <T as TestDsl>::log_output(self, worker_id).await
     }
 
-    async fn resume(&self, worker_id: &WorkerId) {
-        <T as TestDsl>::resume(self, worker_id)
+    async fn resume(&self, worker_id: &WorkerId, force: bool) {
+        <T as TestDsl>::resume(self, worker_id, force)
             .await
             .expect("Failed to resume worker")
     }
@@ -1908,5 +2050,16 @@ impl<T: TestDsl + Sync> TestDslUnsafe for T {
         <T as TestDsl>::wait_for_statuses(self, worker_id, statuses, timeout)
             .await
             .expect("Failed to wait for status")
+    }
+
+    async fn fork_worker(
+        &self,
+        source_worker_id: &WorkerId,
+        target_worker_id: &WorkerId,
+        oplog_index: OplogIndex,
+    ) {
+        <T as TestDsl>::fork_worker(self, source_worker_id, target_worker_id, oplog_index)
+            .await
+            .expect("Failed to fork worker")
     }
 }

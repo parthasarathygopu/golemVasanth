@@ -1,5 +1,4 @@
 use crate::fs::{OverwriteSafeAction, OverwriteSafeActionPlan, PathExtra};
-use crate::validation::ValidatedResult;
 use colored::{ColoredString, Colorize};
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, RwLock};
@@ -149,15 +148,6 @@ pub fn log_skipping_up_to_date<T: AsRef<str>>(subject: T) {
     );
 }
 
-pub fn log_validated_action_result<T, F>(action: &str, result: &ValidatedResult<T>, to_log: F)
-where
-    F: FnOnce(&T) -> String,
-{
-    if let Some(value) = result.as_ok_ref() {
-        log_action(action, to_log(value))
-    }
-}
-
 pub fn log_action_plan(action: &OverwriteSafeAction, plan: OverwriteSafeActionPlan) {
     match plan {
         OverwriteSafeActionPlan::Create => match action {
@@ -263,6 +253,10 @@ pub trait LogColorize {
         self.as_str().bold()
     }
 
+    fn log_color_help_group(&self) -> ColoredString {
+        self.as_str().bold().underline()
+    }
+
     fn log_color_error_highlight(&self) -> ColoredString {
         self.as_str().bold().red().underline()
     }
@@ -272,7 +266,7 @@ pub trait LogColorize {
     }
 }
 
-impl<'a> LogColorize for &'a str {
+impl LogColorize for &str {
     fn as_str(&self) -> impl Colorize {
         *self
     }
@@ -284,7 +278,7 @@ impl LogColorize for String {
     }
 }
 
-impl<'a> LogColorize for &'a Path {
+impl LogColorize for &Path {
     fn as_str(&self) -> impl Colorize {
         ColoredString::from(self.display().to_string())
     }

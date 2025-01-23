@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -452,6 +452,24 @@ impl<Ctx: WorkerCtx> Worker<Ctx> {
         }
     }
 
+    pub async fn resume_replay(&self) -> Result<(), GolemError> {
+        match &*self.instance.lock().await {
+            WorkerInstance::Running(running) => {
+                running
+                    .sender
+                    .send(WorkerCommand::ResumeReplay)
+                    .expect("Failed to send resume command");
+
+                Ok(())
+            }
+            WorkerInstance::Unloaded | WorkerInstance::WaitingForPermit(_) => {
+                Err(GolemError::invalid_request(
+                    "Explicit resume is not supported for uninitialized workers",
+                ))
+            }
+        }
+    }
+
     pub async fn invoke(
         &self,
         idempotency_key: IdempotencyKey,
@@ -473,6 +491,9 @@ impl<Ctx: WorkerCtx> Worker<Ctx> {
         }
     }
 
+    /// Invokes the worker and awaits for a result.
+    ///
+    /// Successful result is a `TypeAnnotatedValue` encoding either a tuple or a record.
     pub async fn invoke_and_await(
         &self,
         idempotency_key: IdempotencyKey,
@@ -663,6 +684,10 @@ impl<Ctx: WorkerCtx> Worker<Ctx> {
     pub async fn store_invocation_resuming(&self, key: &IdempotencyKey) {
         let mut map = self.invocation_results.write().unwrap();
         map.remove(key);
+    }
+
+    pub fn component_type(&self) -> ComponentType {
+        self.execution_status.read().unwrap().component_type()
     }
 
     pub async fn update_status(&self, status_value: WorkerStatusRecord) {
@@ -963,9 +988,9 @@ impl<Ctx: WorkerCtx> Worker<Ctx> {
         }
     }
 
-    async fn stop_internal_running<'a>(
+    async fn stop_internal_running(
         &self,
-        mut instance: MutexGuard<'a, WorkerInstance>,
+        mut instance: MutexGuard<'_, WorkerInstance>,
         called_from_invocation_loop: bool,
         fail_pending_invocations: Option<GolemError>,
     ) {
@@ -1319,7 +1344,7 @@ impl RunningWorker {
 
         let context = Ctx::create(
             OwnedWorkerId::new(&worker_metadata.account_id, &worker_metadata.worker_id),
-            component_metadata,
+            component_metadata.clone(),
             parent.promise_service(),
             parent.worker_service(),
             parent.worker_enumeration_service(),
@@ -1350,7 +1375,8 @@ impl RunningWorker {
         )
         .await?;
 
-        let mut store = Store::new(&parent.engine(), context);
+        let engine = parent.engine();
+        let mut store = Store::new(&engine, context);
         store.set_epoch_deadline(parent.config().limits.epoch_ticks);
         let worker_id_clone = worker_metadata.worker_id.clone();
         store.epoch_deadline_callback(move |mut store| {
@@ -1371,7 +1397,12 @@ impl RunningWorker {
 
         store.limiter_async(|ctx| ctx.resource_limiter());
 
-        let instance_pre = parent.linker().instantiate_pre(&component).map_err(|e| {
+        let mut linker = (*parent.linker()).clone(); // fresh linker
+        store
+            .data_mut()
+            .link(&engine, &mut linker, &component, &component_metadata)?;
+
+        let instance_pre = linker.instantiate_pre(&component).map_err(|e| {
             GolemError::worker_creation_failed(
                 parent.owned_worker_id.worker_id(),
                 format!(
@@ -1472,6 +1503,28 @@ impl RunningWorker {
                 while let Some(cmd) = receiver.recv().await {
                     waiting_for_command.store(false, Ordering::Release);
                     match cmd {
+                        WorkerCommand::ResumeReplay => {
+                            let mut store = store.lock().await;
+
+                            let resume_replay_result =
+                                Ctx::resume_replay(&mut *store, &instance).await;
+
+                            match resume_replay_result {
+                                Ok(decision) => {
+                                    final_decision = decision;
+                                }
+
+                                Err(err) => {
+                                    warn!("Failed to resume replay: {err}");
+                                    if let Err(err2) = store.data_mut().set_suspended().await {
+                                        warn!("Additional error during resume of replay of worker: {err2}");
+                                    }
+
+                                    parent.stop_internal(true, Some(err)).await;
+                                    break;
+                                }
+                            }
+                        }
                         WorkerCommand::Invocation => {
                             let message = active
                                 .write()
@@ -1551,13 +1604,13 @@ impl RunningWorker {
                                                     store,
                                                     &instance,
                                                 )
-                                                .await;
+                                                    .await;
 
                                                 match result {
                                                     Ok(InvokeResult::Succeeded {
-                                                        output,
-                                                        consumed_fuel,
-                                                    }) => {
+                                                           output,
+                                                           consumed_fuel,
+                                                       }) => {
                                                         let component_metadata =
                                                             store.as_context().data().component_metadata();
 
@@ -1577,9 +1630,9 @@ impl RunningWorker {
                                                                     output,
                                                                     function_results,
                                                                 )
-                                                                .map_err(|e| GolemError::ValueMismatch {
-                                                                    details: e.join(", "),
-                                                                });
+                                                                    .map_err(|e| GolemError::ValueMismatch {
+                                                                        details: e.join(", "),
+                                                                    });
 
                                                                 match result {
                                                                     Ok(result) => {
@@ -1685,8 +1738,8 @@ impl RunningWorker {
                                                     }
                                                 }
                                             }
-                                            .instrument(span)
-                                            .await;
+                                                .instrument(span)
+                                                .await;
                                             if do_break {
                                                 break;
                                             }
@@ -1713,7 +1766,7 @@ impl RunningWorker {
                                                     vec![
                                                         "golem:api/save-snapshot@1.1.0.{save}".to_string(),
                                                         "golem:api/save-snapshot@0.2.0.{save}".to_string(),
-                                                    ]
+                                                    ],
                                                 ) {
                                                     store.data_mut().begin_call_snapshotting_function();
 
@@ -1950,9 +2003,9 @@ impl InvocationResult {
                 OplogEntry::Error { error, .. } => {
                     let stderr = recover_stderr_logs(services, owned_worker_id, oplog_idx).await;
                     Err(FailedInvocationResult { trap_type: TrapType::Error(error), stderr })
-                },
-                OplogEntry::Interrupted { .. } => Err(FailedInvocationResult { trap_type: TrapType::Interrupt(InterruptKind::Interrupt), stderr: "".to_string()}),
-                OplogEntry::Exited { .. } => Err(FailedInvocationResult { trap_type: TrapType::Exit, stderr: "".to_string()}),
+                }
+                OplogEntry::Interrupted { .. } => Err(FailedInvocationResult { trap_type: TrapType::Interrupt(InterruptKind::Interrupt), stderr: "".to_string() }),
+                OplogEntry::Exited { .. } => Err(FailedInvocationResult { trap_type: TrapType::Exit, stderr: "".to_string() }),
                 _ => panic!("Unexpected oplog entry pointed by invocation result at index {oplog_idx} for {owned_worker_id:?}")
             };
 
@@ -1976,6 +2029,7 @@ pub enum RetryDecision {
 #[derive(Debug)]
 enum WorkerCommand {
     Invocation,
+    ResumeReplay,
     Interrupt(InterruptKind),
 }
 
@@ -2011,6 +2065,7 @@ where
         .unwrap_or_default();
 
     let last_oplog_index = this.oplog_service().get_last_index(owned_worker_id).await;
+
     if last_known.oplog_idx == last_oplog_index {
         Ok(last_known)
     } else {

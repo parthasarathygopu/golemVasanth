@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,9 +13,10 @@
 // limitations under the License.
 
 use bincode::{Decode, Encode};
+use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
-use crate::SafeDisplay;
+use crate::{virtual_exports, SafeDisplay};
 use golem_wasm_ast::analysis::AnalysedFunctionParameter;
 use golem_wasm_ast::core::Mem;
 use golem_wasm_ast::metadata::Producers as WasmAstProducers;
@@ -24,6 +25,7 @@ use golem_wasm_ast::{
     component::Component,
     IgnoreAllButMetadata,
 };
+use rib::ParsedFunctionSite;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Encode, Decode)]
@@ -34,12 +36,42 @@ pub struct ComponentMetadata {
     pub exports: Vec<AnalysedExport>,
     pub producers: Vec<Producers>,
     pub memories: Vec<LinearMemory>,
+
+    #[serde(default)]
+    pub dynamic_linking: HashMap<String, DynamicLinkedInstance>,
 }
 
 impl ComponentMetadata {
     pub fn analyse_component(data: &[u8]) -> Result<ComponentMetadata, ComponentProcessingError> {
         let raw = RawComponentMetadata::analyse_component(data)?;
         Ok(raw.into())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Encode, Decode)]
+#[cfg_attr(feature = "poem", derive(poem_openapi::Union))]
+#[cfg_attr(feature = "poem", oai(discriminator_name = "type", one_of = true))]
+#[serde(tag = "type")]
+pub enum DynamicLinkedInstance {
+    WasmRpc(DynamicLinkedWasmRpc),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Encode, Decode)]
+#[cfg_attr(feature = "poem", derive(poem_openapi::Object))]
+#[cfg_attr(feature = "poem", oai(rename_all = "camelCase"))]
+#[serde(rename_all = "camelCase")]
+pub struct DynamicLinkedWasmRpc {
+    /// Maps resource names within the dynamic linked interface to target interfaces
+    pub target_interface_name: HashMap<String, String>,
+}
+
+impl DynamicLinkedWasmRpc {
+    pub fn target_site(&self, stub_resource: &str) -> Result<ParsedFunctionSite, String> {
+        let target_interface = self
+            .target_interface_name
+            .get(stub_resource)
+            .ok_or("Resource not found in dynamic linked interface")?;
+        ParsedFunctionSite::parse(target_interface)
     }
 }
 
@@ -119,6 +151,7 @@ impl From<RawComponentMetadata> for ComponentMetadata {
             exports,
             producers,
             memories,
+            dynamic_linking: HashMap::new(),
         }
     }
 }
@@ -149,6 +182,7 @@ impl RawComponentMetadata {
             .map_err(ComponentProcessingError::Analysis)?;
 
         add_resource_drops(&mut exports);
+        add_virtual_exports(&mut exports);
 
         let exports = exports.into_iter().collect::<Vec<_>>();
 
@@ -294,11 +328,24 @@ fn drop_from_constructor(constructor: &AnalysedFunction) -> AnalysedFunction {
     }
 }
 
+fn add_virtual_exports(exports: &mut Vec<AnalysedExport>) {
+    // Some interfaces like the golem/http:incoming-handler do not exist on the component,
+    // but are dynamically created by the worker executor based on other existing interfaces.
+
+    if virtual_exports::http_incoming_handler::implements_required_interfaces(exports) {
+        exports.extend(vec![
+            virtual_exports::http_incoming_handler::ANALYZED_EXPORT.clone(),
+        ]);
+    };
+}
+
 #[cfg(feature = "protobuf")]
 mod protobuf {
     use crate::model::component_metadata::{
-        ComponentMetadata, LinearMemory, ProducerField, Producers, VersionedName,
+        ComponentMetadata, DynamicLinkedInstance, DynamicLinkedWasmRpc, LinearMemory,
+        ProducerField, Producers, VersionedName,
     };
+    use std::collections::HashMap;
 
     impl From<golem_api_grpc::proto::golem::component::VersionedName> for VersionedName {
         fn from(value: golem_api_grpc::proto::golem::component::VersionedName) -> Self {
@@ -392,6 +439,11 @@ mod protobuf {
                     .into_iter()
                     .map(|memory| memory.into())
                     .collect(),
+                dynamic_linking: value
+                    .dynamic_linking
+                    .into_iter()
+                    .map(|(k, v)| v.try_into().map(|v| (k, v)))
+                    .collect::<Result<_, _>>()?,
             })
         }
     }
@@ -414,7 +466,64 @@ mod protobuf {
                     .into_iter()
                     .map(|memory| memory.into())
                     .collect(),
+                dynamic_linking: HashMap::from_iter(
+                    value
+                        .dynamic_linking
+                        .into_iter()
+                        .map(|(k, v)| (k, v.into())),
+                ),
             }
+        }
+    }
+
+    impl From<DynamicLinkedInstance>
+        for golem_api_grpc::proto::golem::component::DynamicLinkedInstance
+    {
+        fn from(value: DynamicLinkedInstance) -> Self {
+            match value {
+                DynamicLinkedInstance::WasmRpc(dynamic_linked_wasm_rpc) => Self {
+                    dynamic_linked_instance: Some(
+                        golem_api_grpc::proto::golem::component::dynamic_linked_instance::DynamicLinkedInstance::WasmRpc(
+                        dynamic_linked_wasm_rpc.into())),
+                },
+            }
+        }
+    }
+
+    impl TryFrom<golem_api_grpc::proto::golem::component::DynamicLinkedInstance>
+        for DynamicLinkedInstance
+    {
+        type Error = String;
+
+        fn try_from(
+            value: golem_api_grpc::proto::golem::component::DynamicLinkedInstance,
+        ) -> Result<Self, Self::Error> {
+            match value.dynamic_linked_instance {
+                Some(golem_api_grpc::proto::golem::component::dynamic_linked_instance::DynamicLinkedInstance::WasmRpc(dynamic_linked_wasm_rpc)) => Ok(Self::WasmRpc(dynamic_linked_wasm_rpc.try_into()?)),
+                None => Err("Missing dynamic_linked_instance".to_string()),
+            }
+        }
+    }
+
+    impl From<DynamicLinkedWasmRpc> for golem_api_grpc::proto::golem::component::DynamicLinkedWasmRpc {
+        fn from(value: DynamicLinkedWasmRpc) -> Self {
+            Self {
+                target_interface_name: value.target_interface_name,
+            }
+        }
+    }
+
+    impl TryFrom<golem_api_grpc::proto::golem::component::DynamicLinkedWasmRpc>
+        for DynamicLinkedWasmRpc
+    {
+        type Error = String;
+
+        fn try_from(
+            value: golem_api_grpc::proto::golem::component::DynamicLinkedWasmRpc,
+        ) -> Result<Self, Self::Error> {
+            Ok(Self {
+                target_interface_name: value.target_interface_name,
+            })
         }
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ pub mod commands;
 pub mod compilation;
 pub mod fs;
 pub mod log;
-pub mod make;
 pub mod model;
 pub mod naming;
 pub mod rust;
@@ -27,14 +26,13 @@ pub mod wit_encode;
 pub mod wit_generate;
 pub mod wit_resolve;
 
+use crate::commands::app::ComponentSelectMode;
 use crate::log::{LogColorize, Output};
 use crate::model::app::{AppBuildStep, ComponentPropertiesExtensions};
 use crate::stub::{StubConfig, StubDefinition};
 use crate::wit_generate::UpdateCargoToml;
 use anyhow::Context;
 use clap::Subcommand;
-use colored::Colorize;
-use itertools::Itertools;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::path::PathBuf;
@@ -175,9 +173,12 @@ pub struct InitializeWorkspaceArgs {
 
 #[derive(clap::Parser, Debug)]
 pub struct App {
-    /// List of application manifests, can be defined multiple times
+    /// Application manifest to be used, can be defined multiple times
     #[clap(long, short)]
     pub app: Vec<PathBuf>,
+    /// Selects a component, can be defined multiple times
+    #[clap(long, short)]
+    pub component_name: Vec<String>,
     /// Selects a build profile
     #[clap(long, short)]
     pub build_profile: Option<String>,
@@ -191,7 +192,7 @@ pub struct App {
 
 #[derive(Subcommand, Debug)]
 pub enum AppSubCommand {
-    /// Runs component build steps
+    /// Run component build steps
     Build(AppBuildArgs),
     /// Clean outputs
     Clean,
@@ -224,11 +225,11 @@ pub fn generate(args: GenerateArgs) -> anyhow::Result<()> {
     let stub_def = StubDefinition::new(
         StubConfig {
             source_wit_root: args.source_wit_root,
-            target_root: args.dest_crate_root,
+            client_root: args.dest_crate_root,
             selected_world: args.world,
             stub_crate_version: args.stub_crate_version,
             wasm_rpc_override: args.wasm_rpc_override,
-            extract_source_interface_package: true,
+            extract_source_exports_package: true,
             seal_cargo_workspace: false,
         }
     )
@@ -241,11 +242,11 @@ pub async fn build(args: BuildArgs) -> anyhow::Result<()> {
 
     let stub_def = StubDefinition::new(StubConfig {
         source_wit_root: args.source_wit_root,
-        target_root: target_root.path().to_path_buf(),
+        client_root: target_root.path().to_path_buf(),
         selected_world: args.world,
         stub_crate_version: args.stub_crate_version,
         wasm_rpc_override: args.wasm_rpc_override,
-        extract_source_interface_package: true,
+        extract_source_exports_package: true,
         seal_cargo_workspace: false,
     })
     .context("Failed to gather information for the stub generator")?;
@@ -269,20 +270,6 @@ pub async fn compose(args: ComposeArgs) -> anyhow::Result<()> {
     commands::composition::compose(&args.source_wasm, &args.stub_wasm, &args.dest_wasm).await
 }
 
-pub fn initialize_workspace(
-    args: InitializeWorkspaceArgs,
-    stubgen_command: &str,
-    stubgen_prefix: &[&str],
-) -> anyhow::Result<()> {
-    make::initialize_workspace(
-        &args.targets,
-        &args.callers,
-        args.wasm_rpc_override,
-        stubgen_command,
-        stubgen_prefix,
-    )
-}
-
 pub async fn run_app_command<CPE: ComponentPropertiesExtensions>(
     mut clap_command: clap::Command,
     command: App,
@@ -301,7 +288,7 @@ pub async fn run_app_command<CPE: ComponentPropertiesExtensions>(
         None => {
             clap_command.print_help()?;
             println!();
-            print_app_custom_commands_help(config);
+            print_dynamic_help(config);
             exit(2);
         }
     }
@@ -312,7 +299,20 @@ fn app_command_to_config_and_subcommand<CPE: ComponentPropertiesExtensions>(
 ) -> (commands::app::Config<CPE>, Option<AppSubCommand>) {
     (
         commands::app::Config {
-            app_resolve_mode: app_manifest_sources_to_resolve_mode(command.app),
+            app_source_mode: app_manifest_sources_to_resolve_mode(command.app),
+            component_select_mode: {
+                if command.component_name.is_empty() {
+                    ComponentSelectMode::CurrentDir
+                } else {
+                    ComponentSelectMode::Explicit(
+                        command
+                            .component_name
+                            .into_iter()
+                            .map(|component_name| component_name.into())
+                            .collect(),
+                    )
+                }
+            },
             skip_up_to_date_checks: false,
             profile: command.build_profile.map(|profile| profile.into()),
             offline: command.offline,
@@ -334,34 +334,10 @@ fn app_manifest_sources_to_resolve_mode(
     }
 }
 
-fn print_app_custom_commands_help<CPE: ComponentPropertiesExtensions>(
-    mut config: commands::app::Config<CPE>,
-) {
+fn print_dynamic_help<CPE: ComponentPropertiesExtensions>(mut config: commands::app::Config<CPE>) {
     config.log_output = Output::None;
-    match commands::app::collect_custom_commands(config) {
-        Ok(commands) => {
-            if !commands.is_empty() {
-                println!("{}", "Custom commands:".bold().underline());
-                for (command, profiles) in commands {
-                    if profiles.is_empty() {
-                        println!("  {}", command);
-                    } else {
-                        println!(
-                            "  {} ({})",
-                            command,
-                            profiles.iter().map(|s| s.to_string()).join(", ")
-                        );
-                    }
-                }
-                println!();
-            }
-        }
-        Err(err) => {
-            println!(
-                "{}\n{:?}",
-                "Cannot show custom commands:".log_color_warn(),
-                err
-            );
-        }
+
+    if let Some(err) = commands::app::print_dynamic_help(config).err() {
+        println!("{}\n{}", "Cannot show dynamic help:".log_color_warn(), err);
     }
 }

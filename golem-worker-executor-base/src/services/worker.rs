@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,6 @@
 
 use std::sync::{Arc, RwLock};
 
-use async_trait::async_trait;
-use golem_common::model::oplog::{OplogEntry, OplogIndex};
-use golem_common::model::{
-    ComponentType, OwnedWorkerId, ShardId, Timestamp, WorkerId, WorkerMetadata, WorkerStatus,
-    WorkerStatusRecord, WorkerStatusRecordExtensions,
-};
-use tracing::{debug, warn};
-
 use crate::error::GolemError;
 use crate::metrics::workers::record_worker_call;
 use crate::model::ExecutionStatus;
@@ -30,6 +22,13 @@ use crate::services::shard::ShardService;
 use crate::storage::keyvalue::{
     KeyValueStorage, KeyValueStorageLabelledApi, KeyValueStorageNamespace,
 };
+use async_trait::async_trait;
+use golem_common::model::oplog::{OplogEntry, OplogIndex};
+use golem_common::model::{
+    ComponentType, OwnedWorkerId, ShardId, Timestamp, WorkerId, WorkerMetadata, WorkerStatus,
+    WorkerStatusRecord, WorkerStatusRecordExtensions,
+};
+use tracing::{debug, warn};
 
 /// Service for persisting the current set of Golem workers represented by their metadata
 #[async_trait]

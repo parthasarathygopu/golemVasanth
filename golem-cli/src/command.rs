@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,13 +26,14 @@ use crate::config::ProfileName;
 use crate::diagnose::{self, diagnose};
 use crate::examples;
 use crate::init::{init_profile, CliKind, DummyProfileAuth};
-use crate::model::{ComponentUriArg, GolemError, GolemResult};
-use crate::oss::model::OssContext;
+use crate::model::{GolemError, GolemResult};
 use api_definition::ApiDefinitionSubcommand;
 use api_deployment::ApiDeploymentSubcommand;
 use clap::{self, Command, Subcommand};
 use component::ComponentSubCommand;
 use golem_common::uri::oss::uri::ComponentUri;
+use golem_examples::cli::NameOrLanguage;
+use golem_examples::model::{ComponentName, GuestLanguage, GuestLanguageTier, PackageName};
 use golem_wasm_rpc_stubgen::App;
 use plugin::PluginSubcommand;
 use profile::{ProfileSubCommand, UniversalProfileAdd};
@@ -44,10 +45,9 @@ pub trait ComponentRefSplit<ProjectRef> {
     fn split(self) -> (ComponentUri, Option<ProjectRef>);
 }
 
-impl ComponentRefSplit<OssContext> for ComponentUriArg {
-    fn split(self) -> (ComponentUri, Option<OssContext>) {
-        (self.uri, None)
-    }
+pub trait ComponentRefsSplit<ProjectRef> {
+    // Returns None if the projects are IDs are not matching for all URIs
+    fn split(self) -> Option<(Vec<ComponentUri>, Option<ProjectRef>)>;
 }
 
 pub trait CliCommand<Ctx>: Subcommand {
@@ -80,7 +80,7 @@ pub enum EmptyCommand {}
 
 impl<Ctx> CliCommand<Ctx> for EmptyCommand {
     async fn run(self, _ctx: Ctx) -> Result<GolemResult, GolemError> {
-        Ok(GolemResult::Str("".to_string()))
+        Ok(GolemResult::Empty)
     }
 }
 
@@ -106,9 +106,43 @@ pub enum StaticSharedCommand {
         #[command(flatten)]
         command: diagnose::cli::Command,
     },
-    /// Create a new Golem component from built-in examples
-    #[command(flatten)]
-    Examples(golem_examples::cli::Command),
+
+    /// Create a new Golem standalone component example project from built-in examples
+    #[command()]
+    New {
+        #[command(flatten)]
+        name_or_language: NameOrLanguage,
+
+        /// The package name of the generated component (in namespace:name format)
+        #[arg(short, long)]
+        package_name: Option<PackageName>,
+
+        /// The new component's name
+        component_name: ComponentName,
+    },
+
+    /// Add a new Golem component to a project using Golem Application Manifest
+    #[command()]
+    NewAppComponent {
+        /// The component name (and package name) of the generated component (in namespace:name format)
+        component_name: PackageName,
+
+        /// Component language
+        #[arg(short, long, alias = "lang")]
+        language: GuestLanguage,
+    },
+
+    /// Lists the built-in examples available for creating new components
+    #[command()]
+    ListExamples {
+        /// The minimum language tier to include in the list
+        #[arg(short, long)]
+        min_tier: Option<GuestLanguageTier>,
+
+        /// Filter examples by a given guest language
+        #[arg(short, long, alias = "lang")]
+        language: Option<GuestLanguage>,
+    },
 }
 
 impl<Ctx> CliCommand<Ctx> for StaticSharedCommand {
@@ -116,21 +150,24 @@ impl<Ctx> CliCommand<Ctx> for StaticSharedCommand {
         match self {
             StaticSharedCommand::Diagnose { command } => {
                 diagnose(command);
-                Ok(GolemResult::Str("".to_string()))
+                Ok(GolemResult::Empty)
             }
-            StaticSharedCommand::Examples(golem_examples::cli::Command::ListExamples {
-                min_tier,
-                language,
-            }) => examples::process_list_examples(min_tier, language),
-            StaticSharedCommand::Examples(golem_examples::cli::Command::New {
+            StaticSharedCommand::ListExamples { min_tier, language } => {
+                examples::list_standalone_examples(min_tier, language)
+            }
+            StaticSharedCommand::New {
                 name_or_language,
                 package_name,
                 component_name,
-            }) => examples::process_new(
+            } => examples::new(
                 name_or_language.example_name(),
                 component_name,
                 package_name,
             ),
+            StaticSharedCommand::NewAppComponent {
+                component_name,
+                language,
+            } => examples::new_app_component(component_name, language),
         }
     }
 }
@@ -141,6 +178,7 @@ impl<Ctx> CliCommand<Ctx> for StaticSharedCommand {
 pub enum SharedCommand<
     ProjectRef: clap::Args,
     ComponentRef: clap::Args,
+    ComponentRefs: clap::Args,
     WorkerRef: clap::Args,
     PluginScopeRef: clap::Args,
     ProfileAdd: clap::Args,
@@ -155,7 +193,7 @@ pub enum SharedCommand<
     #[command()]
     Component {
         #[command(subcommand)]
-        subcommand: ComponentSubCommand<ProjectRef, ComponentRef>,
+        subcommand: ComponentSubCommand<ProjectRef, ComponentRef, ComponentRefs>,
     },
 
     /// Manage Golem workers
@@ -231,11 +269,19 @@ impl NoProfileCommandContext {
 impl<
         ProjectRef: clap::Args,
         ComponentRef: clap::Args,
+        ComponentRefs: clap::Args,
         WorkerRef: clap::Args,
         PluginScopeRef: clap::Args,
         ProfileAdd: clap::Args + Into<UniversalProfileAdd>,
     > CliCommand<NoProfileCommandContext>
-    for SharedCommand<ProjectRef, ComponentRef, WorkerRef, PluginScopeRef, ProfileAdd>
+    for SharedCommand<
+        ProjectRef,
+        ComponentRef,
+        ComponentRefs,
+        WorkerRef,
+        PluginScopeRef,
+        ProfileAdd,
+    >
 {
     async fn run(self, ctx: NoProfileCommandContext) -> Result<GolemResult, GolemError> {
         match self {
@@ -259,7 +305,7 @@ impl<
             }
             SharedCommand::Completion { generator } => {
                 completion::print_completion(ctx.command, generator);
-                Ok(GolemResult::Str("".to_string()))
+                Ok(GolemResult::Empty)
             }
             _ => ctx.fail_uninitialized(),
         }

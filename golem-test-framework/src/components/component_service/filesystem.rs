@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ use crate::components::component_service::{AddComponentError, ComponentService};
 use async_trait::async_trait;
 use golem_api_grpc::proto::golem::component::v1::component_service_client::ComponentServiceClient;
 use golem_api_grpc::proto::golem::component::v1::plugin_service_client::PluginServiceClient;
+use golem_common::model::component_metadata::DynamicLinkedInstance;
 use golem_common::model::plugin::PluginInstallation;
 use golem_common::model::{
     component_metadata::{LinearMemory, RawComponentMetadata},
@@ -23,10 +24,8 @@ use golem_common::model::{
 };
 use golem_wasm_ast::analysis::AnalysedExport;
 use serde::Serialize;
-use std::{
-    os::unix::fs::MetadataExt,
-    path::{Path, PathBuf},
-};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use tonic::transport::Channel;
 use tracing::{debug, info};
 use uuid::Uuid;
@@ -51,6 +50,7 @@ impl FileSystemComponentService {
         component_type: ComponentType,
         files: &[InitialComponentFile],
         skip_analysis: bool,
+        dynamic_linking: &HashMap<String, DynamicLinkedInstance>,
     ) -> Result<ComponentId, AddComponentError> {
         let target_dir = &self.root;
         debug!("Local component store: {target_dir:?}");
@@ -91,7 +91,7 @@ impl FileSystemComponentService {
         let size = tokio::fs::metadata(&target_path)
             .await
             .map_err(|e| AddComponentError::Other(format!("Failed to read component size: {}", e)))?
-            .size();
+            .len();
 
         let metadata = ComponentMetadata {
             version: component_version,
@@ -101,6 +101,7 @@ impl FileSystemComponentService {
             memories,
             exports,
             plugin_installations: vec![],
+            dynamic_linking: dynamic_linking.clone(),
         };
         metadata
             .write_to_file(&target_dir.join(format!("{component_id}-{component_version}.json")))
@@ -166,6 +167,7 @@ impl ComponentService for FileSystemComponentService {
             component_type,
             &[],
             true,
+            &HashMap::new(),
         )
         .await
         .expect("Failed to add component")
@@ -177,8 +179,16 @@ impl ComponentService for FileSystemComponentService {
         component_id: &ComponentId,
         component_type: ComponentType,
     ) -> Result<(), AddComponentError> {
-        self.write_component_to_filesystem(local_path, component_id, 0, component_type, &[], false)
-            .await?;
+        self.write_component_to_filesystem(
+            local_path,
+            component_id,
+            0,
+            component_type,
+            &[],
+            false,
+            &HashMap::new(),
+        )
+        .await?;
         Ok(())
     }
 
@@ -194,6 +204,7 @@ impl ComponentService for FileSystemComponentService {
             component_type,
             &[],
             false,
+            &HashMap::new(),
         )
         .await
     }
@@ -211,6 +222,7 @@ impl ComponentService for FileSystemComponentService {
             component_type,
             &[],
             false,
+            &HashMap::new(),
         )
         .await
     }
@@ -221,6 +233,7 @@ impl ComponentService for FileSystemComponentService {
         _name: &str,
         component_type: ComponentType,
         files: &[InitialComponentFile],
+        dynamic_linking: &HashMap<String, DynamicLinkedInstance>,
     ) -> Result<ComponentId, AddComponentError> {
         self.write_component_to_filesystem(
             local_path,
@@ -229,6 +242,7 @@ impl ComponentService for FileSystemComponentService {
             component_type,
             files,
             false,
+            dynamic_linking,
         )
         .await
     }
@@ -261,6 +275,7 @@ impl ComponentService for FileSystemComponentService {
             component_type,
             &[],
             false,
+            &HashMap::new(),
         )
         .await
         .expect("Failed to write component to filesystem");
@@ -316,6 +331,7 @@ pub struct ComponentMetadata {
     pub component_type: ComponentType,
     pub files: Vec<InitialComponentFile>,
     pub plugin_installations: Vec<PluginInstallation>,
+    pub dynamic_linking: HashMap<String, DynamicLinkedInstance>,
 }
 
 impl ComponentMetadata {
