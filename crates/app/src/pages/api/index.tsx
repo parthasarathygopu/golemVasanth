@@ -40,7 +40,11 @@ export const APIs = () => {
               placeholder="Search APIs..."
               onChange={(e) =>
                 setSearchedApi(
-                  apis.filter((api) => api.id.includes(e.target.value))
+                  apis.filter((api) =>
+                    api.id
+                      .toLocaleLowerCase()
+                      .includes(e.target.value.toLocaleLowerCase())
+                  )
                 )
               }
               className="pl-10"

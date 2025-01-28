@@ -1,4 +1,9 @@
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
 import { Container, Home, Settings, ArrowLeft, Tv } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +21,10 @@ const WorkerLeftNav = () => {
     [key: string]: Component;
   }>({});
 
+  const [searchParams] = useSearchParams();
+
+  const urlFn = searchParams.get("fn") || "";
+
   const isActive = (path: string) => location.pathname.endsWith(path);
 
   useEffect(() => {
@@ -26,7 +35,7 @@ const WorkerLeftNav = () => {
 
   return (
     <ErrorBoundary>
-      <nav className="w-64 border-r p-4 border-gray-200 dark:border-gray-700 min-h-[88vh]">
+      <nav className="w-64 border-r p-4 border-gray-200 dark:border-gray-700 min-h-[93vh]">
         <div className="mb-6">
           <div className="flex items-center mb-6">
             <div onClick={() => navigate(`/components/${componentId}/workers`)}>
@@ -140,7 +149,7 @@ const WorkerLeftNav = () => {
                           }
                           className={cn(
                             "w-full flex items-center px-3 py-2 rounded-md text-sm font-medium justify-start",
-                            isActive(fn.name)
+                            urlFn === fn.name
                               ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                               : "hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-600 dark:text-gray-400"
                           )}

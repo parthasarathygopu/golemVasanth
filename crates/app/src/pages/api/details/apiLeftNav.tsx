@@ -119,7 +119,11 @@ const ApiLeftNav = () => {
             {apiDetails?.routes?.map((route) => (
               <div
                 key={`${route.method}-${route.path}`}
-                className="flex items-center gap-2 cursor-pointer"
+                className={`flex items-center gap-2 cursor-pointer ${
+                  path === route.path && method === route.method
+                    ? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-600 dark:text-gray-400"
+                }`}
                 onClick={() => {
                   routeToQuery(route);
                 }}

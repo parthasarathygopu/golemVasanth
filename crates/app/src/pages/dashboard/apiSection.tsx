@@ -33,7 +33,7 @@ export function APISection() {
         </CardHeader>
         <CardContent>
           {apis.length > 0 ? (
-            <div className="grid gap-0">
+            <div className="grid gap-0 overflow-scroll max-h-[70vh]">
               {apis.map((api) => (
                 <div
                   key={api.id}
