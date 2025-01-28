@@ -270,10 +270,12 @@ export class Service {
         if (response?.errors) {
           descriptions = response?.errors.join(", ");
         }
+        
         toast({
           title: "API request failed.",
           description: descriptions,
           variant: "destructive",
+          duration: 5000,
         });
       }
       throw response;
@@ -300,6 +302,7 @@ export class Service {
         toast({
           title: "Api is Failed check the api details",
           variant: "destructive",
+          duration: 5000,
         });
         throw err;
       });

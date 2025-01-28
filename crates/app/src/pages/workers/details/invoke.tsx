@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { API } from "@/service";
-import { ComponentExportFunction, Typ } from "@/types/component.ts";
+import { ComponentExportFunction, Field, Typ } from "@/types/component.ts";
 import ErrorBoundary from "@/components/errorBoundary";
 import WorkerLeftNav from "./leftNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,21 +14,26 @@ import { Textarea } from "@/components/ui/textarea";
 
 const parseToJsonEditor = (data: ComponentExportFunction) => {
   const toShow = data.parameters.map((param) => {
-    if (param.typ.type === "Str") {
-      return "";
-    } else if (param.typ.type === "Record") {
-      const recordFields = {} as any;
-      param.typ.fields?.forEach((field: any) => {
-        recordFields[field.name] = "";
-      });
-      return recordFields;
-    } else if (param.typ.type === "U32") {
-      return 0;
-    }
-    return null;
+    return processPayload(param);
   });
 
   return toShow;
+};
+
+const processPayload = (field: Field) => {
+  console.log("Mapping ", field.typ.type, " to ", field.name);
+  if (field.typ.type === "Str") {
+    return "";
+  } else if (field.typ.type === "Record") {
+    const recordFields = {} as any;
+    field.typ.fields?.forEach((field: any) => {
+      recordFields[field.name] = processPayload(field);
+    });
+    return recordFields;
+  } else if (["U32", "F32", "I32"].indexOf(field.typ.type)) {
+    return 0;
+  }
+  return null;
 };
 
 const parseToApiPayload = (
@@ -154,8 +159,12 @@ export default function WorkerInvoke() {
               {workerName}
             </h1>
           </header>
-
-          <div className="p-10 space-y-6 max-w-7xl mx-auto overflow-scroll h-[90vh] min-w-[50%]">
+          <header className="w-full border-b py-4 px-6">
+            <h3 className="">
+              {name} - {fn}
+            </h3>
+          </header>
+          <div className="p-10 space-y-6 mx-auto overflow-scroll h-[90vh] min-w-[60%]">
             <main className="flex-1 overflow-y-auto p-6 space-y-6">
               <SectionCard
                 title="Preview"

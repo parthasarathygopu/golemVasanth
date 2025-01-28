@@ -42,6 +42,7 @@ export default function APISettings() {
         toast({
           title: "Version deleted",
           description: `API version ${activeApiDetails.version} has been deleted successfully.`,
+          duration: 3000,
         });
         if (apiDetails.length === 1) {
           navigate(`/apis`);
@@ -69,6 +70,7 @@ export default function APISettings() {
         toast({
           title: "All versions deleted",
           description: "All API versions have been deleted successfully.",
+          duration: 3000,
         });
         setShowConfirmAllDialog(false);
         navigate(`/apis`);
@@ -90,6 +92,7 @@ export default function APISettings() {
         toast({
           title: "All routes deleted",
           description: "All routes have been deleted successfully.",
+          duration: 3000,
         });
         navigate(`/apis`);
         setShowConfirmAllRoutes(false);

@@ -93,6 +93,7 @@ export default function ComponentInfo() {
           });
           toast({
             title: "File downloaded successfully",
+            duration: 3000,
           });
         }
       );

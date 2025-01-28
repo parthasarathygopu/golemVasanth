@@ -146,6 +146,7 @@ const CreateRoute = () => {
           title: "API not found",
           description: "Please try again.",
           variant: "destructive",
+          duration: Infinity,
         });
         return;
       }

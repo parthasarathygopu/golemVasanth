@@ -63,6 +63,7 @@ export default function ComponentUpdate() {
       toast({
         title: "New Component Added",
         description: "New Component Added",
+        duration: 3000,
       });
     });
   }

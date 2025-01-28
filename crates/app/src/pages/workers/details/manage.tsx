@@ -33,6 +33,7 @@ export default function WorkerManage() {
     API.deleteWorker(componentId, workerName).then(() => {
       toast({
         title: "Worker deleted",
+        duration: 3000,
       });
       navigate(`/components/${componentId}`);
     });
@@ -42,6 +43,7 @@ export default function WorkerManage() {
     API.resumeWorker(componentId, workerName).then(() => {
       toast({
         title: "Worker resumed",
+        duration: 3000,
       });
     });
   };
@@ -50,6 +52,7 @@ export default function WorkerManage() {
     API.interruptWorker(componentId, workerName).then(() => {
       toast({
         title: "Worker interrupted",
+        duration: 3000,
       });
     });
   };

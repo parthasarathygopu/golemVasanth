@@ -38,7 +38,7 @@ const formSchema = z.object({
     .min(1, "Domain is required")
     .regex(
       /^localhost(:\d{1,5})?$/,
-      "Please enter a valid localhost domain (e.g., localhost:3000)"
+      "Please enter a valid localhost domain (e.g., localhost:9006)"
     )
     .refine(
       (value) => {
@@ -165,6 +165,7 @@ export default function CreateDeployment() {
       await API.createDeployment(payload);
       toast({
         title: "Deployment was successful",
+        duration: 3000,
       });
       navigate("/deployments");
     } catch (error) {
@@ -215,7 +216,7 @@ export default function CreateDeployment() {
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="localhost:3000"
+                        placeholder="localhost:9006"
                         {...field}
                         onChange={(e) => {
                           // Remove any http/https if user pastes them
@@ -227,7 +228,7 @@ export default function CreateDeployment() {
                       />
                     </FormControl>
                     <FormDescription className="text-sm text-muted-foreground">
-                      Enter localhost with a port number (e.g., localhost:3000).
+                      Enter localhost with a port number (e.g., localhost:9006).
                       The port must be between 1 and 65535.
                     </FormDescription>
                     <FormMessage />
