@@ -4,9 +4,9 @@ import { ENDPOINT } from "@/service/endpoints.ts";
 import { Api } from "@/types/api.ts";
 import { fetch } from "@tauri-apps/plugin-http";
 import { toast } from "@/hooks/use-toast";
-import { Plugin } from "@/types";
+import { Plugin } from "@/types/plugin";
+import { parseErrorMessage } from "@/lib/utils";
 
-/// singleton service go call all the api
 export class Service {
   private baseUrl: string;
 
@@ -190,7 +190,6 @@ export class Service {
     const components = await this.getComponents();
     components.forEach((data: Component) => {
       if (data?.versionedComponentId?.componentId) {
-        // TODO: Need to check version is Latest or not
         result[data.versionedComponentId.componentId] = {
           componentName: data.componentName,
           componentId: data.versionedComponentId.componentId,
@@ -199,8 +198,8 @@ export class Service {
           componentSize: data.componentSize,
           componentType: data.componentType,
           versionId: [
-            ...(result[data.versionedComponentId.componentId]?.versionId || []),
-            data.versionedComponentId.version,
+            ...(result[data.versionedComponentId.componentId]?.versionId ?? []),
+            data.versionedComponentId.version!,
           ],
         };
       }
@@ -224,7 +223,7 @@ export class Service {
       ENDPOINT.downloadComponent(componentId, version)
     );
   };
-  public createPlugin = async (payload: FormData) => {
+  public createPlugin = async (payload: Plugin) => {
     return await this.callApi(
       ENDPOINT.getPlugins(),
       "POST",
@@ -247,51 +246,56 @@ export class Service {
         body: data,
         headers: headers,
       });
-  
+
       const contentType = response.headers.get("Content-Type");
       let responseData: any;
-  
+
       if (contentType && contentType.includes("application/json")) {
         responseData = await response.json();
       } else {
         responseData = await response.text();
       }
-  
+
       if (response.ok) {
         return responseData;
       } else {
         if (response.status === 504) {
           return;
         }
-  
-        throw responseData; 
+
+        throw responseData;
       }
     } catch (response: any) {
       if (method !== "GET") {
-        let descriptions = "Payload is not in correct format";
+        let descriptions = "";
         if (response?.error) {
           descriptions = response?.error;
         }
         if (response?.errors) {
           descriptions = response?.errors.join(", ");
         }
-            if (response?.status !== 504) {
+        if (typeof response === "string") {
+          descriptions = parseErrorMessage(response);
+        }
+        if (response?.status !== 504) {
           toast({
             title: "API request failed.",
             description: descriptions,
             variant: "destructive",
-            duration: descriptions.includes("Rib compilation error") ? Infinity : 5000,
+            duration: descriptions.includes("Rib compilation error")
+              ? Infinity
+              : 5000,
           });
         }
       }
-  
+
       // Re-throw the error only for non-504 status
       if (response?.status !== 504) {
         throw response;
       }
     }
   };
-  
+
   private downloadApi = async (
     url: string,
     method: string = "GET",

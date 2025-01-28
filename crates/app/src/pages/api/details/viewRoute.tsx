@@ -26,7 +26,7 @@ export const ApiRoute = () => {
           const route = selectedApi.routes.find(
             (route) => route.path === path && route.method === method
           );
-          setCurrentRoute(route);
+          setCurrentRoute(route || ({} as Route));
         } else {
           navigate(`/apis/${apiName}/version/${version}`);
         }

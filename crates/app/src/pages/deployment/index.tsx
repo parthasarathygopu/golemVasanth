@@ -50,7 +50,7 @@ export default function Deployments() {
   }, []);
 
   const handleDelete = () => {
-    if (!selectedDeploymentHost) return; // Safety check
+    if (!selectedDeploymentHost) return;
     API.deleteDeployment(selectedDeploymentHost)
       .then(() => {
         setDeployments((prev) =>
@@ -59,7 +59,7 @@ export default function Deployments() {
           )
         );
         setIsDialogOpen(false);
-        setSelectedDeploymentHost(null); // Reset state
+        setSelectedDeploymentHost(null);
       })
       .catch((error) => {
         console.error("Error deleting deployment:", error);
@@ -105,8 +105,8 @@ export default function Deployments() {
                             size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedDeploymentHost(deployment.site.host); // Set selected host
-                              setIsDialogOpen(true); // Open the dialog
+                              setSelectedDeploymentHost(deployment.site.host);
+                              setIsDialogOpen(true);
                             }}
                           >
                             <Trash className="h-4 w-4" />

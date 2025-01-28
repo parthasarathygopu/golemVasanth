@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useParams } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 
@@ -105,9 +104,7 @@ export default function ComponentUpdate() {
                     <FormField
                       control={form.control}
                       name="component"
-                      render={({
-                        field: { value, onChange, ...fieldProps },
-                      }) => (
+                      render={({ field: { onChange, onBlur, name, ref } }) => (
                         <FormItem>
                           <FormLabel>Component</FormLabel>
                           <FormControl>
@@ -121,17 +118,20 @@ export default function ComponentUpdate() {
                                   type="file"
                                   accept="application/wasm,.wasm"
                                   className="hidden"
-                                  {...fieldProps}
-                                  ref={fileInputRef}
+                                  name={name}
+                                  onBlur={onBlur}
+                                  ref={(e) => {
+                                    ref(e); // Forward the ref to react-hook-form
+                                    (
+                                      fileInputRef as React.MutableRefObject<HTMLInputElement | null>
+                                    ).current = e; // Assign to your local ref
+                                  }}
                                   onChange={(event) => {
-                                    setFile(
-                                      event.target.files &&
-                                        event.target.files[0]
-                                    );
-                                    return onChange(
-                                      event.target.files &&
-                                        event.target.files[0]
-                                    );
+                                    const file = event.target.files?.[0];
+                                    if (file) {
+                                      setFile(file);
+                                      onChange(file);
+                                    }
                                   }}
                                 />
                                 <p className="text-sm text-gray-500 mb-4">

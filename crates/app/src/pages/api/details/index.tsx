@@ -78,7 +78,7 @@ const APIDetails = () => {
                 <CardTitle>Routes</CardTitle>
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/apis/${apiName}/version/${version}/routes/add`)}
+                  onClick={() => navigate(`/apis/${apiName}/routes/new`)}
                   className="flex items-center gap-2"
                 >
                   <Plus className="h-5 w-5" />

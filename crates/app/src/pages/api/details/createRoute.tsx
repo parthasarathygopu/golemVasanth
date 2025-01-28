@@ -1,4 +1,3 @@
-/* eslint-disable no-useless-escape */
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -25,7 +24,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { API } from "@/service";
-import { Api } from "@/types/api";
+import { Api, HttpMethod } from "@/types/api";
 import { Component } from "@/types/component";
 import ErrorBoundary from "@/components/errorBoundary";
 import { toast } from "@/hooks/use-toast";
@@ -49,7 +48,7 @@ const routeSchema = z.object({
     .min(1, "Path is required")
     .regex(/^\//, "Path must start with /")
     .regex(
-      /^[a-zA-Z0-9\/\-_<>{}]+$/,
+      /^[a-zA-Z0-9/\-_<>{}]+$/,
       "Path can only contain letters, numbers, slashes, hyphens, underscores, and path parameters in <>"
     ),
   componentId: z.string().min(1, "Component is required"),
@@ -108,13 +107,16 @@ const CreateRoute = () => {
           const route = selectedApi?.routes.find(
             (route) => route.path === path && route.method === method
           );
-          form.setValue("method", route?.method || "Get");
-          form.setValue("path", route?.path || "");
+          form.setValue("method", (route?.method as HttpMethod) ?? "Get");
+
           form.setValue(
             "componentId",
             route?.binding?.componentId?.componentId || ""
           );
-          form.setValue("version", route?.binding?.componentId?.version || "");
+          form.setValue(
+            "version",
+            String(route?.binding?.componentId?.version ?? "")
+          );
           form.setValue("workerName", route?.binding?.workerName || "");
           form.setValue("response", route?.binding?.response || "");
         }
@@ -159,7 +161,7 @@ const CreateRoute = () => {
             version: parseInt(values.version),
           },
           workerName: values.workerName,
-          response: values.response,
+          response: values.response || "",
         },
       });
       await API.putApi(
@@ -342,8 +344,8 @@ const CreateRoute = () => {
                               {form.watch("componentId") &&
                                 componentList[
                                   form.watch("componentId")
-                                ]?.versionId?.map((v: string) => (
-                                  <SelectItem value={v} key={v}>
+                                ]?.versionId?.map((v: number) => (
+                                  <SelectItem value={String(v)} key={v}>
                                     v{v}
                                   </SelectItem>
                                 ))}

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,7 +19,14 @@ import ComponentLeftNav from "./componentsLeftNav";
 import { useEffect, useState } from "react";
 import { API } from "@/service";
 import { useParams } from "react-router-dom";
-import { Component, Field, Parameter, Result, Typ } from "@/types/component.ts";
+import {
+  Component,
+  ComponentExportFunction,
+  Field,
+  Parameter,
+  Result,
+  Typ,
+} from "@/types/component.ts";
 import ErrorBoundary from "@/components/errorBoundary";
 
 function parseType(typ: Typ): string {
@@ -70,8 +76,8 @@ export default function Exports() {
   const [componentList, setComponentList] = useState([] as Component[]);
   const [component, setComponent] = useState<Component>({});
   const [versionList, setVersionList] = useState([] as number[]);
-  const [versionChange, setVersionChange] = useState("0" as string);
-  const [functions, setFunctions] = useState([] as any);
+  const [versionChange, setVersionChange] = useState(0 as number);
+  const [functions, setFunctions] = useState([] as ComponentExportFunction[]);
 
   useEffect(() => {
     if (componentId) {
@@ -87,30 +93,39 @@ export default function Exports() {
   }, [componentId]);
 
   useEffect(() => {
-    if (component) {
-      setFunctions(component.exports?.[0].functions);
+    if (component && component.exports && component.exports[0]) {
+      setFunctions(component.exports[0].functions || []);
     }
   }, [component]);
 
-  const handleVersionChange = (version: string) => {
+  const handleVersionChange = (version: number) => {
     setVersionChange(version);
     const componentDetails = componentList.find((component: Component) => {
       if (component.versionedComponentId) {
         return (
           component.versionedComponentId.componentId === componentId &&
-          component.versionedComponentId.version?.toString() === version
+          component.versionedComponentId.version === version
         );
       }
     });
-    setComponent(componentDetails || {});
+    if (componentDetails) {
+      setComponent({
+        ...componentDetails,
+        exports: componentDetails.metadata?.exports,
+      });
+    } else {
+      setComponent({});
+    }
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    const searchResult = component.exports?.[0].functions.filter((fn: any) => {
-      return fn.name.includes(value);
-    });
-    setFunctions(searchResult);
+    const searchResult = component.exports?.[0].functions.filter(
+      (fn: ComponentExportFunction) => {
+        return fn.name.includes(value);
+      }
+    );
+    setFunctions(searchResult || ([] as ComponentExportFunction[]));
   };
 
   return (
@@ -143,14 +158,14 @@ export default function Exports() {
                 </div>
                 {versionList.length > 0 && (
                   <Select
-                    defaultValue={versionChange}
-                    onValueChange={(version) => handleVersionChange(version)}
+                    defaultValue={versionChange.toString()}
+                    onValueChange={(version) => handleVersionChange(+version)}
                   >
                     <SelectTrigger className="w-[80px]">
-                      <SelectValue />
+                      <SelectValue> v{versionChange} </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {versionList.map((version: any) => (
+                      {versionList.map((version: number) => (
                         <SelectItem key={version} value={String(version)}>
                           v{version}
                         </SelectItem>
@@ -172,28 +187,22 @@ export default function Exports() {
                   </TableHeader>
                   <TableBody>
                     {functions?.length > 0 ? (
-                      functions.map(
-                        (fn: {
-                          name: string;
-                          parameters: any;
-                          results: any;
-                        }) => (
-                          <TableRow key={fn.name}>
-                            <TableCell className="font-mono text-sm">
-                              {component.exports?.[0].name}
-                            </TableCell>
-                            <TableCell className="font-mono text-sm">
-                              {fn.name}
-                            </TableCell>
-                            <TableCell className="font-mono text-sm">
-                              {convertJsonToFunctionStructure(fn.parameters)}
-                            </TableCell>
-                            <TableCell className="font-mono text-sm">
-                              {convertJsonToFunctionStructure(fn.results)}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      )
+                      functions.map((fn: ComponentExportFunction) => (
+                        <TableRow key={fn.name}>
+                          <TableCell className="font-mono text-sm">
+                            {component.exports?.[0].name}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {fn.name}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {convertJsonToFunctionStructure(fn.parameters)}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {convertJsonToFunctionStructure(fn.results)}
+                          </TableCell>
+                        </TableRow>
+                      ))
                     ) : (
                       <div className="p-4 align-center grid">
                         No exports found.

@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import ErrorBoundary from "@/components/errorBoundary";
 import WorkerLeftNav from "./leftNav";
 import { API } from "@/service";
-import { Invocation, Terminal, Worker } from "@/types/worker.ts";
+import { Invocation, Terminal, Worker, WsMessage } from "@/types/worker.ts";
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Activity, Clock, Cog } from "lucide-react";
@@ -15,7 +14,7 @@ export default function WorkerDetails() {
   const { componentId, workerName } = useParams();
   const [workerDetails, setWorkerDetails] = useState({} as Worker);
   const wsRef = useRef<WSS | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<WsMessage[]>([]);
 
   useEffect(() => {
     if (componentId && workerName) {
@@ -28,13 +27,13 @@ export default function WorkerDetails() {
   useEffect(() => {
     const initWebSocket = async () => {
       try {
-        const ws = await WSS.getConnection(
-          `ws://localhost:9881/v1/components/${componentId}/workers/${workerName}/connect`
-        );
+        const url = `ws://localhost:9881/v1/components/${componentId}/workers/${workerName}/connect`;
+        const ws = await WSS.getConnection(url);
         wsRef.current = ws;
 
-        ws.onMessage((data) => {
-          setMessages((prev) => [...prev, data]); // Update messages state
+        ws.onMessage((data: unknown) => {
+          const message = data as WsMessage;
+          setMessages((prev: WsMessage[]) => [...prev, message]);
         });
       } catch (error) {
         console.error("Failed to connect WebSocket:", error);
@@ -60,7 +59,7 @@ export default function WorkerDetails() {
         timestamp: invocationStart.timestamp,
         function: invocationStart.function,
       });
-    else if (stdOut) {
+    else if (stdOut && stdOut.bytes) {
       terminal.push({
         timestamp: stdOut.timestamp,
         message: String.fromCharCode(...stdOut.bytes),

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -137,7 +136,7 @@ export default function ComponentInfo() {
                         <SelectValue> v{versionChange}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {versionList.map((version: any) => (
+                        {versionList.map((version: number) => (
                           <SelectItem key={version} value={String(version)}>
                             v{version}
                           </SelectItem>

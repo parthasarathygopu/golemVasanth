@@ -1,9 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Invocation } from "@/types/worker";
 
-const processData = (data: Invocation[]) => {
+interface ProcessedData {
+  date: string;
+  [key: string]: string | number;
+}
+
+const processData = (data: Invocation[]): ProcessedData[] => {
   return data.reduce((acc, curr) => {
     const date = new Date(curr.timestamp);
     const dateKey = date.toLocaleDateString("en-US", {
@@ -14,7 +18,8 @@ const processData = (data: Invocation[]) => {
 
     const existingDate = acc.find((item) => item.date === dateKey);
     if (existingDate) {
-      existingDate[functionName] = (existingDate[functionName] || 0) + 1;
+      existingDate[functionName] =
+        ((existingDate[functionName] ?? 0) as number) + 1;
     } else {
       acc.push({
         date: dateKey,
@@ -22,7 +27,7 @@ const processData = (data: Invocation[]) => {
       });
     }
     return acc;
-  }, [] as any[]);
+  }, [] as ProcessedData[]);
 };
 
 export function InvocationsChart({ data = [] as Invocation[] }) {

@@ -102,3 +102,20 @@ export const removeDuplicateApis = (data: Api[]) => {
   });
   return Object.values(uniqueEntries);
 };
+
+export const  parseErrorMessage = (error: string): string  => {
+  const patterns = [
+    /(?<=: ).*?(?=\s\(occurred)/, // Extract message before "(occurred"
+    /(?<=error: ).*?(?=:|$)/i,   // Extract message after "error: "
+    /Invalid value for the key [^:]+/, // Extract key-specific error
+  ];
+
+  for (const pattern of patterns) {
+    const match = error.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+  return "An unknown error occurred.";
+}
+

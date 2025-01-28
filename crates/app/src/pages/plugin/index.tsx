@@ -12,7 +12,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { API } from "@/service";
-import { Plugin } from "@/types";
+import { Plugin } from "@/types/plugin";
 
 export function PluginList() {
   const navigate = useNavigate();

@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import ErrorBoundary from "@/components/errorBoundary";
 import WorkerLeftNav from "./leftNav";
-import { Invocation, Terminal } from "@/types/worker.ts";
+import { Invocation, Terminal, WsMessage } from "@/types/worker.ts";
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { WSS } from "@/service/wss";
@@ -14,7 +13,7 @@ import { formatTimestampInDateTimeFormat } from "@/lib/utils";
 export default function WorkerLive() {
   const { componentId, workerName } = useParams();
   const wsRef = useRef<WSS | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<WsMessage[]>([]);
   const [reload, setReload] = useState(false);
 
   useEffect(() => {
@@ -26,8 +25,9 @@ export default function WorkerLive() {
         );
         wsRef.current = ws;
 
-        ws.onMessage((data) => {
-          setMessages((prev) => [...prev, data]);
+        ws.onMessage((data: unknown) => {
+          const message = data as WsMessage;
+          setMessages((prev: WsMessage[]) => [...prev, message]);
         });
       } catch (error) {
         console.error("Failed to connect WebSocket:", error);
@@ -53,7 +53,7 @@ export default function WorkerLive() {
         timestamp: invocationStart.timestamp,
         function: invocationStart.function,
       });
-    else if (stdOut) {
+    else if (stdOut && stdOut.bytes) {
       terminal.push({
         timestamp: stdOut.timestamp,
         message: String.fromCharCode(...stdOut.bytes),

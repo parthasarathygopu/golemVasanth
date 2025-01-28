@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { API } from "@/service";
-import { ComponentExportFunction, Field, Typ } from "@/types/component.ts";
+import { ComponentExportFunction, Export } from "@/types/component.ts";
 import ErrorBoundary from "@/components/errorBoundary";
 import WorkerLeftNav from "./leftNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,72 +10,7 @@ import { ClipboardCopy } from "lucide-react";
 import { cn, sanitizeInput } from "@/lib/utils";
 import ReactJson from "react-json-view";
 import { Textarea } from "@/components/ui/textarea";
-
-const parseToJsonEditor = (data: ComponentExportFunction) => {
-  const toShow = data.parameters.map((param) => {
-    return processPayload(param);
-  });
-
-  return toShow;
-};
-
-const processPayload = (field: Field) => {
-  if (field.typ.type === "Str") {
-    return "";
-  } else if (field.typ.type === "Record") {
-    const recordFields = {} as any;
-    field.typ.fields?.forEach((field: any) => {
-      recordFields[field.name] = processPayload(field);
-    });
-    return recordFields;
-  } else if (["U32", "F32", "I32"].indexOf(field.typ.type)) {
-    return 0;
-  }
-  return null;
-};
-
-const parseToApiPayload = (
-  input: any[],
-  actionDefinition: ComponentExportFunction
-) => {
-  const payload = {
-    params: [],
-  } as any;
-  const parseValue = (input: any[], typeDef: Typ) => {
-    if (typeDef.type === "Str") {
-      return input[0];
-    } else if (typeDef.type === "Record") {
-      return input[0];
-    } else if (typeDef.type === "Tuple") {
-      return input[0];
-    } else if (typeDef.type === "List") {
-      return input;
-    } else if (typeDef.type === "U32" || typeDef.type === "F32") {
-      return input[0];
-    } else {
-      throw new Error(`Unsupported type: ${typeDef.type}`);
-    }
-  };
-
-  // Parse input based on action definition parameters
-  actionDefinition.parameters.forEach((param, index) => {
-    const value = parseValue(input[index] ? [input[index]] : input, param.typ);
-    payload.params.push({
-      value,
-      typ: param.typ,
-    });
-  });
-
-  return payload;
-};
-
-function formatJSON(input: string): string {
-  try {
-    return JSON.stringify(JSON.parse(input), null, 2);
-  } catch {
-    return input;
-  }
-}
+import { formatJSON, parseToJsonEditor, parseToApiPayload } from "@/lib/worker";
 
 export default function WorkerInvoke() {
   const { componentId = "", workerName = "" } = useParams();
@@ -87,7 +21,7 @@ export default function WorkerInvoke() {
   const [functionDetails, setFunctionDetails] = useState(
     {} as ComponentExportFunction
   );
-  const [value, setValue] = useState<string>("{}"); // Default to formatted empty object
+  const [value, setValue] = useState<string>("{}");
   const [resultValue, setResultValue] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
@@ -98,10 +32,11 @@ export default function WorkerInvoke() {
         const exportItem =
           response?.[componentId]?.exports?.find(
             (exportItem) => exportItem.name === name
-          ) || {};
-        const functions = exportItem.functions?.find(
-          (functionItem: ComponentExportFunction) => functionItem.name === fn
-        );
+          ) || ({} as Export);
+        const functions =
+          exportItem.functions?.find(
+            (functionItem: ComponentExportFunction) => functionItem.name === fn
+          ) || ({} as ComponentExportFunction);
         setFunctionDetails(functions);
         const formatted = formatJSON(
           JSON.stringify(parseToJsonEditor(functions))

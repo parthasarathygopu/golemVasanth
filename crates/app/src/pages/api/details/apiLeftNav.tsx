@@ -1,4 +1,9 @@
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   ArrowLeft,
   CircleFadingPlusIcon,
@@ -18,8 +23,8 @@ const ApiLeftNav = () => {
   const navigate = useNavigate();
   const { apiName, version } = useParams();
   const [queryParams] = useSearchParams();
-    const path = queryParams.get("path");
-    const method = queryParams.get("method");
+  const path = queryParams.get("path");
+  const method = queryParams.get("method");
   const location = useLocation();
   const [apiDetails, setApiDetails] = useState({} as Api);
 

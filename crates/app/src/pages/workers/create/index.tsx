@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -41,7 +40,7 @@ const formSchema = z.object({
       value: z.string(),
     })
   ),
-  args: z.array(z.string()),
+  args: z.array(z.string()), // Change to an array of strings
 });
 
 export default function CreateWorker() {
@@ -53,7 +52,7 @@ export default function CreateWorker() {
       componentID: componentId,
       name: "",
       env: [{ key: "", value: "" }],
-      args: [" "],
+      args: [""], // Defaulting to an array of strings with an empty string
     },
   });
 
@@ -90,8 +89,17 @@ export default function CreateWorker() {
   }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const { componentID, ...rest } = values as any;
-    rest.env = rest.env.reduce(
+    const { componentID, ...rest } = values as {
+      componentID: string;
+      env: { key: string; value: string }[];
+      args: string[]; // Now it's an array of strings
+    };
+
+    // Ensure that args doesn't contain empty strings
+    rest.args = rest.args.filter((arg) => arg.trim() !== "");
+
+    // Convert env object into an array of key-value pairs
+    const envObject = rest.env.reduce(
       (acc: Record<string, string>, arg: { key: string; value: string }) => {
         if (arg.key) {
           acc[arg.key] = arg.value;
@@ -100,7 +108,10 @@ export default function CreateWorker() {
       },
       {}
     );
-    rest.args = rest.args.filter((x: any) => x && x.trim().length > 0);
+    rest.env = Object.entries(envObject).map(([key, value]) => ({
+      key,
+      value,
+    }));
 
     API.createWorker(componentID, rest).then((response) => {
       navigate(
@@ -227,10 +238,10 @@ export default function CreateWorker() {
                           >
                             <FormField
                               control={form.control}
-                              name={`args.${index}`}
+                              name={`args.${index}`} // Now we treat args as strings
                               render={({ field }) => (
                                 <FormControl>
-                                  <Input {...field} />
+                                  <Input placeholder="Argument" {...field} />
                                 </FormControl>
                               )}
                             />
@@ -252,9 +263,9 @@ export default function CreateWorker() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => appendArg("")}
+                          onClick={() => appendArg("")} // Add an empty string to the args array
                         >
-                          Add Arguments
+                          Add Argument
                         </Button>
                       </div>
 

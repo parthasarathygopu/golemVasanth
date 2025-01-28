@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { Plugin } from "@/types";
+import { Plugin } from "@/types/plugin";
 import { useEffect, useState } from "react";
 import { API } from "@/service";
 import { ArrowLeft, Component, Globe, Trash2 } from "lucide-react";
