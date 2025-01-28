@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -88,6 +89,7 @@ export default function CreateDeployment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -161,6 +163,9 @@ export default function CreateDeployment() {
         apiDefinitions: data.definitions,
       };
       await API.createDeployment(payload);
+      toast({
+        title: "Deployment was successful",
+      });
       navigate("/deployments");
     } catch (error) {
       console.error("Failed to create deployment:", error);

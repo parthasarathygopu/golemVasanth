@@ -37,7 +37,7 @@ export const ComponentDetails = () => {
             <div className="mx-auto px-6 lg:px-8">
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-foreground truncate">
-                  {componentId}
+                  {component.componentName}
                 </h1>
               </div>
             </div>

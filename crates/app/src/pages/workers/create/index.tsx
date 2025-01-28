@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // @ts-nocheck
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,6 +28,7 @@ import { v4 as uuidv4 } from "uuid";
 import ErrorBoundary from "@/components/errorBoundary";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Component } from "@/types/component";
 
 const formSchema = z.object({
   componentID: z.string(),
@@ -54,6 +56,16 @@ export default function CreateWorker() {
       args: [" "],
     },
   });
+
+  const [component, setComponent] = useState({} as Component);
+
+  useEffect(() => {
+    if (componentId) {
+      API.getComponentByIdAsKey().then((response) => {
+        setComponent(response[componentId]);
+      });
+    }
+  }, [componentId]);
 
   const {
     fields: envFields,
@@ -106,7 +118,7 @@ export default function CreateWorker() {
             <div className="mx-auto px-6 lg:px-8">
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-foreground truncate">
-                  {componentId}
+                  {component.componentName}
                 </h1>
               </div>
             </div>

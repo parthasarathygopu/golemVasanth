@@ -22,6 +22,7 @@ import { Separator } from "@/components/ui/separator.tsx";
 import { API } from "@/service";
 import { Worker } from "@/types/worker.ts";
 import ErrorBoundary from "@/components/errorBoundary";
+import { Component } from "@/types/component";
 
 export default function ComponentSettings() {
   const { toast } = useToast();
@@ -29,6 +30,15 @@ export default function ComponentSettings() {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const { componentId } = useParams();
   const navigate = useNavigate();
+  const [component, setComponent] = React.useState({} as Component);
+
+  React.useEffect(() => {
+    if (componentId) {
+      API.getComponentByIdAsKey().then((response) => {
+        setComponent(response[componentId]);
+      });
+    }
+  }, [componentId]);
 
   const handleDeleteAll = async () => {
     setIsDeleting(true);
@@ -59,7 +69,7 @@ export default function ComponentSettings() {
             <div className="mx-auto px-6 lg:px-8">
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-foreground truncate">
-                  {componentId}
+                  {component.componentName}
                 </h1>
               </div>
             </div>

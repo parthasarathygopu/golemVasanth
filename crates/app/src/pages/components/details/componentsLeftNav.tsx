@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ErrorBoundary from "@/components/errorBoundary";
 
-const ApiLeftNav = () => {
+const ComponentLeftNav = () => {
   const navigate = useNavigate();
   const { componentId } = useParams();
   const location = useLocation();
@@ -132,4 +132,4 @@ const ApiLeftNav = () => {
   );
 };
 
-export default ApiLeftNav;
+export default ComponentLeftNav;

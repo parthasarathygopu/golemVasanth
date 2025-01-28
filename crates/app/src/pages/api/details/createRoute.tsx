@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -83,7 +84,7 @@ const CreateRoute = () => {
       method: "Get",
       path: "",
       componentId: "",
-      version: version || "0",
+      version: "",
       workerName: "",
       response: "",
     },
@@ -94,6 +95,8 @@ const CreateRoute = () => {
     const fetchData = async () => {
       if (!apiName) return;
 
+      console.log("path", path);
+      console.log("method", method);
       try {
         setIsLoading(true);
         const [apiResponse, componentResponse] = await Promise.all([
@@ -130,6 +133,7 @@ const CreateRoute = () => {
   }, [apiName, version, path, method]);
 
   const onSubmit = async (values: RouteFormValues) => {
+    console.log("values", values, activeApiDetails);
     if (!activeApiDetails) return;
 
     try {
@@ -328,12 +332,15 @@ const CreateRoute = () => {
                           <FormLabel>Version</FormLabel>
                           <Select
                             onValueChange={field.onChange}
-                            value={`${field.value}`}
+                            value={field.value}
                             disabled={!form.watch("componentId")}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select version" />
+                                <SelectValue placeholder="Select version">
+                                  {" "}
+                                  v{field.value}{" "}
+                                </SelectValue>
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -410,7 +417,7 @@ const CreateRoute = () => {
                         Creating...
                       </>
                     ) : (
-                      "Create Route"
+                      <div>{isEdit ? "Edit Route" : "Create Route"}</div>
                     )}
                   </Button>
                 </div>

@@ -99,34 +99,14 @@ function App() {
                         >
                             <Route path="" element={<APIDetails/>}/>
                             <Route path="settings" element={<APISettings/>}/>
-                            <Route path="routes/edit" element={<CreateRoute/>}/>
+                            <Route path="routes/add" element={<CreateRoute key="create"/>}/>
+                            <Route path="routes/edit" element={<CreateRoute key="edit"/>}/>
                             <Route path="newversion" element={<APINewVersion/>}/>
                             <Route path="routes" element={<ApiRoute/>}/>
                         </Route>
-                        {/* <Route
-              path="/apis/:apiName/version/:version/"
-              element={<APIDetails />}
-            />
-            <Route
-              path="/apis/:apiName/version/:version/settings"
-              element={<APISettings />}
-            />
-            <Route
-              path="/apis/:apiName/version/:version/route/:routeId"
-              element={<ApiRoute />}
-            />
-            <Route
-              path="/apis/:apiName/version/:version/newversion"
-              element={<APINewVersion />}
-            />
-            <Route
-              path="/apis/:apiName/version/:version/routes/new"
-              element={<CreateRoute />}
-            /> */}
                         <Route path="/deployments" element={<Deployments/>}/>
                         <Route path="/plugins" element={<PluginList/>}/>
                         <Route path="/plugins/create" element={<CreatePlugin/>}/>
-                        <Route path="/apis/:apiName/routes/new" element={<CreateRoute/>}/>
                         <Route path="/deployments" element={<Deployments/>}/>
                         <Route path="/deployments/create" element={<CreateDeployment/>}/>
                         <Route path="/plugins" element={<PluginList/>}/>

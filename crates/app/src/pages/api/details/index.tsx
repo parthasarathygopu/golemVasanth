@@ -31,7 +31,7 @@ const APIDetails = () => {
         setActiveApiDetails(selectedApi!);
       });
       API.getDeploymentApi(apiName).then((response) => {
-        let result = [] as Deployment[];
+        const result = [] as Deployment[];
         response.forEach((deployment: Deployment) => {
           if (deployment.apiDefinitions.length > 0) {
             deployment.apiDefinitions.forEach((apiDefinition) => {
@@ -78,7 +78,7 @@ const APIDetails = () => {
                 <CardTitle>Routes</CardTitle>
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/apis/${apiName}/routes/new`)}
+                  onClick={() => navigate(`/apis/${apiName}/version/${version}/routes/add`)}
                   className="flex items-center gap-2"
                 >
                   <Plus className="h-5 w-5" />

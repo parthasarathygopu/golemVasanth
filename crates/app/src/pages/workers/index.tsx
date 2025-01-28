@@ -14,14 +14,24 @@ import ErrorBoundary from "@/components/errorBoundary";
 import ComponentLeftNav from "../components/details/componentsLeftNav";
 import { Worker } from "@/types/worker.ts";
 import { API } from "@/service";
+import { Component } from "@/types/component";
 
 export default function WorkerList() {
   const [workerList, setWorkerList] = useState([] as Worker[]);
   const [filteredWorkers, setFilteredWorkers] = useState([] as Worker[]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [component, setComponent] = useState({} as Component);
 
   const navigate = useNavigate();
   const { componentId } = useParams();
+
+  useEffect(() => {
+    if (componentId) {
+      API.getComponentByIdAsKey().then((response) => {
+        setComponent(response[componentId]);
+      });
+    }
+  }, [componentId]);
 
   const filterWorkers = () => {
     const lowerCaseQuery = searchQuery.toLowerCase();
@@ -53,7 +63,7 @@ export default function WorkerList() {
             <div className="mx-auto px-6 lg:px-8">
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-foreground truncate">
-                  {componentId}
+                  {component.componentName}
                 </h1>
               </div>
             </div>

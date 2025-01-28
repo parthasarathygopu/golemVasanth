@@ -23,7 +23,7 @@ export const ApiRoute = () => {
       API.getApi(apiName).then((response) => {
         const selectedApi = response.find((api) => api.version === version);
         if (selectedApi) {
-          let route = selectedApi.routes.find(
+          const route = selectedApi.routes.find(
             (route) => route.path === path && route.method === method
           );
           setCurrentRoute(route);
@@ -45,7 +45,7 @@ export const ApiRoute = () => {
   const handleDelete = () => {
     if (apiName) {
       API.getApi(apiName).then((response: Api[]) => {
-        let currentApi = response.find((api) => api.version === version);
+        const currentApi = response.find((api) => api.version === version);
         if (currentApi) {
           currentApi.routes = currentApi.routes.filter(
             (route) => route.path !== path! && route.method !== method!

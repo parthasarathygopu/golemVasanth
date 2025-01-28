@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useParams } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
 
 import ComponentLeftNav from "./componentsLeftNav";
 import {
@@ -21,9 +23,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { API } from "@/service";
-import { useRef, useState } from "react";
 import { toast } from "@/hooks/use-toast.ts";
 import ErrorBoundary from "@/components/errorBoundary.tsx";
+import { Component } from "@/types/component";
 
 const formSchema = z.object({
   component: z.instanceof(File).refine((file) => file.size < 50000000, {
@@ -41,6 +43,16 @@ export default function ComponentUpdate() {
       component: undefined,
     },
   });
+
+  const [component, setComponent] = useState({} as Component);
+
+  useEffect(() => {
+    if (componentId) {
+      API.getComponentByIdAsKey().then((response) => {
+        setComponent(response[componentId]);
+      });
+    }
+  }, [componentId]);
 
   function onSubmit() {
     const formData = new FormData();
@@ -64,7 +76,7 @@ export default function ComponentUpdate() {
             <div className="mx-auto px-6 lg:px-8">
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-foreground truncate">
-                  {componentId}
+                  {component.componentName}
                 </h1>
               </div>
             </div>
@@ -76,7 +88,7 @@ export default function ComponentUpdate() {
             >
               <CardTitle>
                 <h1 className="text-2xl font-semibold mb-1">
-                  Create a new Component
+                  Update Component
                 </h1>
               </CardTitle>
               <CardDescription>
@@ -135,7 +147,7 @@ export default function ComponentUpdate() {
                       )}
                     />
                     <div className="flex justify-end">
-                      <Button type="submit">Update Component</Button>
+                      <Button type="submit">Update</Button>
                     </div>
                   </form>
                 </Form>

@@ -49,7 +49,7 @@ export default function APISettings() {
           setApiDetails(
             apiDetails.filter((api) => api.version !== activeApiDetails.version)
           );
-          navigate(`/apis/${apiName}`);
+          navigate(`/apis`);
         }
         setShowConfirmDialog(false);
         setIsDeleting(false);
@@ -91,7 +91,7 @@ export default function APISettings() {
           title: "All routes deleted",
           description: "All routes have been deleted successfully.",
         });
-        navigate(`/apis/${apiName}`);
+        navigate(`/apis`);
         setShowConfirmAllRoutes(false);
         setIsDeleting(false);
       })
