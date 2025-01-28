@@ -108,6 +108,7 @@ const CreateRoute = () => {
             (route) => route.path === path && route.method === method
           );
           form.setValue("method", (route?.method as HttpMethod) ?? "Get");
+          form.setValue("path", route?.path || "");
 
           form.setValue(
             "componentId",
@@ -149,8 +150,7 @@ const CreateRoute = () => {
         return;
       }
       selectedApi.routes = selectedApi.routes.filter(
-        (route) =>
-          !(route.path === values.path && route.method === values.method)
+        (route) => !(route.path === path && route.method === method)
       );
       selectedApi.routes.push({
         method: values.method,

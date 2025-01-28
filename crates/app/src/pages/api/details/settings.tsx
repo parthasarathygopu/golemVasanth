@@ -47,10 +47,10 @@ export default function APISettings() {
         if (apiDetails.length === 1) {
           navigate(`/apis`);
         } else {
-          setApiDetails(
-            apiDetails.filter((api) => api.version !== activeApiDetails.version)
+          const newVersion = apiDetails.find(
+            (api) => api.version !== activeApiDetails.version
           );
-          navigate(`/apis`);
+          navigate(`/apis/${apiName}/version/${newVersion?.version}`);
         }
         setShowConfirmDialog(false);
         setIsDeleting(false);
@@ -94,7 +94,7 @@ export default function APISettings() {
           description: "All routes have been deleted successfully.",
           duration: 3000,
         });
-        navigate(`/apis`);
+        navigate(`/apis/${apiName}/version/${version}`);
         setShowConfirmAllRoutes(false);
         setIsDeleting(false);
       })

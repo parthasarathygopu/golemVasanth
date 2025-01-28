@@ -9,19 +9,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { HTTP_METHOD_COLOR } from "@/pages/api/details/apiLeftNav";
+import { Component } from "@/types/component";
 
 export const ApiRoute = () => {
   const navigate = useNavigate();
   const { apiName, version } = useParams();
   const [currentRoute, setCurrentRoute] = useState({} as Route);
+  const [componentList, setComponentList] = useState<{
+    [key: string]: Component;
+  }>({});
   const [queryParams] = useSearchParams();
   const path = queryParams.get("path");
   const method = queryParams.get("method");
 
   useEffect(() => {
-    if (apiName && version && path && method) {
-      API.getApi(apiName).then((response) => {
-        const selectedApi = response.find((api) => api.version === version);
+    const fetchData = async () => {
+      if (apiName && version && path && method) {
+        const [apiResponse, componentResponse] = await Promise.all([
+          API.getApi(apiName),
+          API.getComponentByIdAsKey(),
+        ]);
+        setComponentList(componentResponse);
+        const selectedApi = apiResponse.find((api) => api.version === version);
         if (selectedApi) {
           const route = selectedApi.routes.find(
             (route) => route.path === path && route.method === method
@@ -30,10 +40,11 @@ export const ApiRoute = () => {
         } else {
           navigate(`/apis/${apiName}/version/${version}`);
         }
-      });
-    } else {
-      navigate(`/apis/${apiName}/version/${version}`);
-    }
+      } else {
+        navigate(`/apis/${apiName}/version/${version}`);
+      }
+    };
+    fetchData();
   }, [apiName, version, path, method]);
 
   const routeToQuery = () => {
@@ -67,7 +78,11 @@ export const ApiRoute = () => {
               <div className="flex items-center gap-2">
                 <Badge
                   variant="secondary"
-                  className="bg-emerald-900 text-emerald-200 hover:bg-emerald-900"
+                  className={
+                    HTTP_METHOD_COLOR[
+                      currentRoute.method as keyof typeof HTTP_METHOD_COLOR
+                    ]
+                  }
                 >
                   {currentRoute.method}
                 </Badge>
@@ -99,7 +114,10 @@ export const ApiRoute = () => {
             <div className="space-y-2">
               <CardTitle className="text-sm ">Component</CardTitle>
               <Input
-                value={`${currentRoute?.binding?.componentId?.componentId} / v${currentRoute?.binding?.componentId?.version}`}
+                value={`${
+                  componentList[currentRoute?.binding?.componentId?.componentId]
+                    ?.componentName
+                } / v${currentRoute?.binding?.componentId?.version}`}
                 disabled
                 className="text-sm font-mono"
               />
