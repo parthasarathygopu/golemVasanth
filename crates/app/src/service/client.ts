@@ -247,41 +247,51 @@ export class Service {
         body: data,
         headers: headers,
       });
-
+  
       const contentType = response.headers.get("Content-Type");
       let responseData: any;
-
+  
       if (contentType && contentType.includes("application/json")) {
         responseData = await response.json();
       } else {
         responseData = await response.text();
       }
+  
       if (response.ok) {
         return responseData;
       } else {
-        throw responseData;
+        if (response.status === 504) {
+          return;
+        }
+  
+        throw responseData; 
       }
     } catch (response: any) {
       if (method !== "GET") {
-        let descriptions = response;
+        let descriptions = "Payload is not in correct format";
         if (response?.error) {
           descriptions = response?.error;
         }
         if (response?.errors) {
           descriptions = response?.errors.join(", ");
         }
-        
-        toast({
-          title: "API request failed.",
-          description: descriptions,
-          variant: "destructive",
-          duration: 5000,
-        });
+            if (response?.status !== 504) {
+          toast({
+            title: "API request failed.",
+            description: descriptions,
+            variant: "destructive",
+            duration: descriptions.includes("Rib compilation error") ? Infinity : 5000,
+          });
+        }
       }
-      throw response;
+  
+      // Re-throw the error only for non-504 status
+      if (response?.status !== 504) {
+        throw response;
+      }
     }
   };
-
+  
   private downloadApi = async (
     url: string,
     method: string = "GET",

@@ -51,8 +51,6 @@ export default function Deployments() {
 
   const handleDelete = () => {
     if (!selectedDeploymentHost) return; // Safety check
-
-    console.log("selectedDeploymentHost", selectedDeploymentHost);
     API.deleteDeployment(selectedDeploymentHost)
       .then(() => {
         setDeployments((prev) =>

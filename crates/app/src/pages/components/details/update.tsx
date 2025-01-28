@@ -61,8 +61,7 @@ export default function ComponentUpdate() {
       form.reset();
       setFile(null);
       toast({
-        title: "New Component Added",
-        description: "New Component Added",
+        title: "Component was updated successfully",
         duration: 3000,
       });
     });

@@ -9,31 +9,17 @@ import ApiLeftNav from "@/pages/api/details/apiLeftNav";
 import { API } from "@/service";
 import { Api } from "@/types/api";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Outlet,
-  useLocation,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 
 export const ApiLayout = () => {
   const { apiName, version } = useParams();
   const navigate = useNavigate();
   const [apiDetails, setApiDetails] = useState([] as Api[]);
-  const [queryParams] = useSearchParams();
-  const path = queryParams.get("path");
-  const method = queryParams.get("method");
 
   const basePath = useLocation().pathname.replace(
     `/apis/${apiName}/version/${version}`,
     ""
   );
-  console.log(useLocation().pathname);
-  console.log(basePath);
-  console.log("path ", path);
-  console.log("method ", method);
-
   const sortedVersions = useMemo(() => {
     return [...apiDetails].sort((a, b) =>
       b.version.localeCompare(a.version, undefined, { numeric: true })
@@ -71,7 +57,7 @@ export const ApiLayout = () => {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue></SelectValue>
+                    <SelectValue>{version}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {sortedVersions.map((api) => (

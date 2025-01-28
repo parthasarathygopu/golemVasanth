@@ -94,9 +94,6 @@ const CreateRoute = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!apiName) return;
-
-      console.log("path", path);
-      console.log("method", method);
       try {
         setIsLoading(true);
         const [apiResponse, componentResponse] = await Promise.all([
@@ -133,7 +130,6 @@ const CreateRoute = () => {
   }, [apiName, version, path, method]);
 
   const onSubmit = async (values: RouteFormValues) => {
-    console.log("values", values, activeApiDetails);
     if (!activeApiDetails) return;
 
     try {
@@ -166,8 +162,6 @@ const CreateRoute = () => {
           response: values.response,
         },
       });
-      console.log("selectedApi", selectedApi);
-
       await API.putApi(
         activeApiDetails.id,
         activeApiDetails.version,

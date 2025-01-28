@@ -21,7 +21,6 @@ const parseToJsonEditor = (data: ComponentExportFunction) => {
 };
 
 const processPayload = (field: Field) => {
-  console.log("Mapping ", field.typ.type, " to ", field.name);
   if (field.typ.type === "Str") {
     return "";
   } else if (field.typ.type === "Record") {
