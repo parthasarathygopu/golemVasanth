@@ -22,12 +22,14 @@ import { useParams } from "react-router-dom";
 import {
   Component,
   ComponentExportFunction,
+  Export,
   Field,
   Parameter,
   Result,
   Typ,
 } from "@/types/component.ts";
 import ErrorBoundary from "@/components/errorBoundary";
+import { calculateExportFunctions } from "@/lib/utils";
 
 function parseType(typ: Typ): string {
   if (typ.type) {
@@ -93,8 +95,21 @@ export default function Exports() {
   }, [componentId]);
 
   useEffect(() => {
-    if (component && component.exports && component.exports[0]) {
-      setFunctions(component.exports[0].functions || []);
+    if (component && component.exports) {
+      const functions = component.exports.reduce(
+        (acc: ComponentExportFunction[], curr: Export) => {
+          const updatedFunctions = curr.functions.map(
+            (func: ComponentExportFunction) => ({
+              ...func,
+              exportName: curr.name,
+            })
+          );
+
+          return acc.concat(updatedFunctions);
+        },
+        []
+      );
+      setFunctions(functions);
     }
   }, [component]);
 
@@ -120,11 +135,12 @@ export default function Exports() {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    const searchResult = component.exports?.[0].functions.filter(
-      (fn: ComponentExportFunction) => {
-        return fn.name.includes(value);
-      }
-    );
+
+    const searchResult = calculateExportFunctions(
+      component.exports || []
+    ).filter((fn: ComponentExportFunction) => {
+      return fn.name.includes(value);
+    });
     setFunctions(searchResult || ([] as ComponentExportFunction[]));
   };
 
@@ -190,7 +206,7 @@ export default function Exports() {
                       functions.map((fn: ComponentExportFunction) => (
                         <TableRow key={fn.name}>
                           <TableCell className="font-mono text-sm">
-                            {component.exports?.[0].name}
+                            {fn.exportName}
                           </TableCell>
                           <TableCell className="font-mono text-sm">
                             {fn.name}

@@ -91,4 +91,5 @@ export interface ComponentExportFunction {
   name: string;
   parameters: Parameter[];
   results: Result[];
+  exportName?: string;
 }

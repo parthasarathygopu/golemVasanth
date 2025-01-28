@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button.tsx";
-import { formatRelativeTime } from "@/lib/utils";
+import { calculateExportFunctions, formatRelativeTime } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { API } from "@/service";
 import { Component } from "@/types/component";
@@ -146,7 +146,8 @@ const Components = () => {
                       V{data.versionId?.[0] || ""}
                     </Badge>
                     <Badge variant="secondary" className="rounded-md">
-                      {data.exports?.[0]?.functions.length || 0} Exports
+                      {calculateExportFunctions(data.exports || []).length || 0}{" "}
+                      Exports
                     </Badge>
                     <Badge variant="secondary" className="rounded-md">
                       {Math.round((data.componentSize || 0) / 1024)} KB

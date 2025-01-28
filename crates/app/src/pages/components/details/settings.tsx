@@ -58,7 +58,7 @@ export default function ComponentSettings() {
       description: "All API versions have been deleted successfully.",
       duration: 3000,
     });
-    navigate(`/components`);
+    navigate(`/components/${componentId}`);
   };
 
   return (

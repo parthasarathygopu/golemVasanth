@@ -8,10 +8,24 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Export } from "@/types/component";
+import { ComponentExportFunction, Export } from "@/types/component";
 import ErrorBoundary from "@/components/errorBoundary";
 
-export function ExportsList({ exports }: { exports: Export | undefined }) {
+export function ExportsList({ exports }: { exports: Export[] }) {
+  const functions = exports.reduce(
+    (acc: ComponentExportFunction[], curr: Export) => {
+      const updatedFunctions = curr.functions.map(
+        (func: ComponentExportFunction) => ({
+          ...func,
+          exportName: curr.name,
+        })
+      );
+
+      return acc.concat(updatedFunctions);
+    },
+    []
+  );
+
   return (
     <ErrorBoundary>
       <Card>
@@ -25,17 +39,16 @@ export function ExportsList({ exports }: { exports: Export | undefined }) {
             <CommandList>
               <CommandEmpty>No exports found.</CommandEmpty>
               <CommandGroup>
-                {exports &&
-                  exports.functions.map((endpoint) => (
-                    <CommandItem
-                      key={endpoint.name}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="text-sm">
-                        golem:component/api.{endpoint.name}
-                      </span>
-                    </CommandItem>
-                  ))}
+                {functions?.map((endpoint) => (
+                  <CommandItem
+                    key={endpoint.name}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="text-sm">
+                      {endpoint.exportName}.{endpoint.name}
+                    </span>
+                  </CommandItem>
+                ))}
               </CommandGroup>
             </CommandList>
           </Command>

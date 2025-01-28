@@ -74,7 +74,7 @@ export const ComponentDetails = () => {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <ExportsList exports={component?.metadata?.exports[0]} />
+                <ExportsList exports={component?.metadata?.exports || []} />
                 <WorkerStatus workerStatus={workerStatus} />
               </div>
             </div>

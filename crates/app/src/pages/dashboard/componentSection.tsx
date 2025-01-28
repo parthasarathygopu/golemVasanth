@@ -2,7 +2,7 @@ import { Layers, PlusCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button.tsx";
 import { useEffect, useState } from "react";
-import { formatRelativeTime } from "@/lib/utils";
+import { calculateExportFunctions, formatRelativeTime } from "@/lib/utils";
 import { API } from "@/service";
 import { Component } from "@/types/component.ts";
 import {
@@ -68,7 +68,8 @@ export const ComponentsSection = () => {
                           variant="outline"
                           className="font-mono font-extralight transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-accent hover:text-accent-foreground active:bg-accent/50 active:text-accent-foreground text-muted-foreground"
                         >
-                          {data?.exports?.[0]?.functions?.length} Exports
+                          {calculateExportFunctions(data.exports || []).length}{" "}
+                          Exports
                         </Badge>
                         <Badge
                           variant="outline"

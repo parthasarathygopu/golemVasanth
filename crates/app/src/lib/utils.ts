@@ -1,4 +1,5 @@
 import { Api } from "@/types/api";
+import { ComponentExportFunction, Export } from "@/types/component";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -103,10 +104,10 @@ export const removeDuplicateApis = (data: Api[]) => {
   return Object.values(uniqueEntries);
 };
 
-export const  parseErrorMessage = (error: string): string  => {
+export const parseErrorMessage = (error: string): string => {
   const patterns = [
     /(?<=: ).*?(?=\s\(occurred)/, // Extract message before "(occurred"
-    /(?<=error: ).*?(?=:|$)/i,   // Extract message after "error: "
+    /(?<=error: ).*?(?=:|$)/i, // Extract message after "error: "
     /Invalid value for the key [^:]+/, // Extract key-specific error
   ];
 
@@ -117,5 +118,21 @@ export const  parseErrorMessage = (error: string): string  => {
     }
   }
   return "An unknown error occurred.";
-}
+};
 
+export const calculateExportFunctions = (exports: Export[]) => {
+  const functions = exports.reduce(
+    (acc: ComponentExportFunction[], curr: Export) => {
+      const updatedFunctions = curr.functions.map(
+        (func: ComponentExportFunction) => ({
+          ...func,
+          exportName: curr.name,
+        })
+      );
+
+      return acc.concat(updatedFunctions);
+    },
+    []
+  );
+  return functions;
+};
